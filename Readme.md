@@ -95,7 +95,6 @@ public class Resources {
      *
      * @param resource
      * @return
-     * @throws IOException
      */
     public static InputStream getResourceAsStream(String resource) throws IOException {
         return getResourceAsStream(null, resource);
@@ -107,7 +106,6 @@ public class Resources {
      * @param loader
      * @param resource
      * @return
-     * @throws IOException
      */
     public static InputStream getResourceAsStream(ClassLoader loader, String resource) throws IOException {
         InputStream in = classLoaderWrapper.getResourceAsStream(resource, loader);
@@ -194,4 +192,12 @@ public class ClassLoaderWrapper {
 
 * <font color=red>多次使用重载<font/>
 
+今日完成：已完成dtd文件的读取对xml文件进行校验
+今日遗留：
+
+```text
+java.io.IOException: 未发现资源文件 com/jingxc/ibatis/builder/xml/mybatis-3-config.dtd
+	at com.jingxc.ibatis.io.Resources.getResourceAsStream(Resources.java:33)
+	at com.jingxc.ibatis.io.Resources.getResourceAsStream(Resources.java:19)
+```
 
