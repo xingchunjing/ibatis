@@ -204,11 +204,15 @@ java.io.IOException: 未发现资源文件 com/jingxc/ibatis/builder/xml/mybatis
 
 ### 20231109
 
-解决遗留问题：昨天写到需要读取xml配置，并通过dtd进行文件校验，在读取到publicId和systemId后通过dtd校验时，我发获取到资源文件com/jingxc/ibatis/builder/xml/mybatis-3-config.dtd
+**解决遗留问题：**
 
-原因所在：java在运行代码时，需要先将资源文件编译进classpath路径下，在从classpath中获取资源文件以及代码运行，但是springboot默认是从src/main/resources中读取，所以为加载到mybatis-3-config.dtd文件
+昨天写到需要读取xml配置，并通过dtd进行文件校验，在读取到publicId和systemId后通过dtd校验时，我发获取到资源文件com/jingxc/ibatis/builder/xml/mybatis-3-config.dtd
 
-解决办法：
+**原因所在：**
+
+java在运行代码时，需要先将资源文件编译进classpath路径下，在从classpath中获取资源文件以及代码运行，但是springboot默认是从src/main/resources中读取，所以为加载到mybatis-3-config.dtd文件
+
+**解决办法：**
 
 * 将资源文件都放在src/main/resources中
 * 添加配置单独引入资源文件,在pom文件中添加
@@ -313,12 +317,12 @@ public class XMLMapperEntityResolver implements EntityResolver {
 }
 ```
 
-### XML文件构建
+#### XML文件构建
 
 构建SqlSessionFactory是通过构建者SqlSessionFactoryBuilder构建的，SqlSessionFactoryBuilder首先构建了一个XML文挡构建者，
 这里体现了多次使用构建者模式以减少类创建的复杂程度，由于代码还未完善暂不贴出全部代码
 
-#### TEST
+##### TEST
 
 ```java
 public class IbatisTest {
@@ -334,7 +338,7 @@ public class IbatisTest {
 }
 ```
 
-#### SqlSessionFactoryBuilder
+##### SqlSessionFactoryBuilder
 
 ```java
 public class SqlSessionFactoryBuilder {
@@ -359,7 +363,7 @@ public class SqlSessionFactoryBuilder {
 }
 ```
 
-#### XMLConfigBuilder
+##### XMLConfigBuilder
 
 ```java
 public class XMLConfigBuilder {
@@ -374,7 +378,7 @@ public class XMLConfigBuilder {
 }
 ```
 
-#### 解析器：XPathParser
+##### 解析器：XPathParser
 
 ```java
 public class XPathParser {
