@@ -37,6 +37,10 @@ public class SqlSessionFactoryBuilder {
         // 使用构建者模式，降低耦合，分离复杂对象的创建
         // 1.创建XPathParser解析器对象，根据inputStream解析成Document对象; 2.创建全剧配置对象Configuration
         XMLConfigBuilder xmlConfigBuilder = new XMLConfigBuilder(inputStream, environment, properties);
+
+        // XMLConfigBuilder构建者的parse方法，返回得失全局配置类
+        Configuration configuration = xmlConfigBuilder.parse();
+
         return null;
     }
 }

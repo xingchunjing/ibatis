@@ -1,12 +1,16 @@
 package com.jingxc.ibatis.parsing;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 import org.xml.sax.*;
 
 import javax.xml.XMLConstants;
+import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.InputStream;
 import java.util.Properties;
@@ -21,15 +25,49 @@ public class XPathParser {
     // XPath是一种在XML文档中定位节点的语言，它可以根据节点的属性、元素名称等条件来进行查询。在Java中，可以使用XPath来操作XML文档，实现对特定节点的查找、遍历和修改等操作
     private XPath xpath;
 
+    // 用于描述HTML或XML文档。它提供了许多方法，可以获取文档的信息，其中包括文档的标题、元素、属性等等。使用Document类，我们可以方便地获取HTML或XML文档中的信息，以便我们对文档进行各种操作。
     private final Document document;
 
     public XPathParser(InputStream inputStream, boolean validation, Properties variables, EntityResolver entityResolver) {
+        // 通用构造
         commonConstructor(validation, variables, entityResolver);
+        // 创建document对象
         this.document = createDocument(new InputSource(inputStream));
+    }
+
+    private void commonConstructor(boolean validation, Properties variables, EntityResolver entityResolver) {
+        this.validation = validation;
+        this.entityResolver = entityResolver;
+        this.variables = variables;
+
+        // 创建XPath对象
+        XPathFactory xPathFactory = XPathFactory.newInstance();
+        this.xpath = xPathFactory.newXPath();
+    }
+
+    public XNode evalNode(String expression) {
+        return evalNode(document, expression);
+    }
+
+    public XNode evalNode(Object root, String expression) {
+        Node node = (Node) evaluate(expression, root, XPathConstants.NODE);
+        if (null == node) {
+            return null;
+        }
+        return new XNode(this, node, variables);
+    }
+
+    private Object evaluate(String expression, Object root, QName returnType) {
+        try {
+            return xpath.evaluate(expression, root, returnType);
+        } catch (XPathExpressionException e) {
+            throw new RuntimeException("构建xpath出错.  原因: " + e, e);
+        }
     }
 
     private Document createDocument(InputSource inputSource) {
         try {
+            // 初始化一个XML解析工厂
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
             factory.setValidating(validation);
@@ -39,6 +77,7 @@ public class XPathParser {
             factory.setCoalescing(false);
             factory.setExpandEntityReferences(true);
 
+            // 创建一个DocumentBuilder实例
             DocumentBuilder builder = factory.newDocumentBuilder();
             builder.setEntityResolver(entityResolver);
 
@@ -63,15 +102,5 @@ public class XPathParser {
             throw new RuntimeException("创建document出错.  原因: " + e, e);
         }
 
-    }
-
-    private void commonConstructor(boolean validation, Properties variables, EntityResolver entityResolver) {
-        this.validation = validation;
-        this.entityResolver = entityResolver;
-        this.variables = variables;
-
-        // 创建XPath对象
-        XPathFactory xPathFactory = XPathFactory.newInstance();
-        this.xpath = xPathFactory.newXPath();
     }
 }
