@@ -226,3 +226,222 @@ java.io.IOException: 未发现资源文件 com/jingxc/ibatis/builder/xml/mybatis
     </resources>
 </build>
 ```
+
+#### XML处理
+
+自定义外部处理xml实体，需要实现EntityResolver接口，然后实现resolveEntity方法,以便通过本地资源文件文件对xml进行验证
+
+```text
+对于解析一个xml,sax
+首先会读取该xml文档上的声明,根据声明去寻找相应的dtd定义,以便对文档的进行验证,
+默认的寻找规则,(即:通过网络,实现上就是声明DTD的地址URI地址来下载DTD声明),
+并进行认证,下载的过程是一个漫长的过程,而且当网络不可用时,这里会报错,就是因为相应的dtd没找到
+```
+
+XML验证文件路径：com/jingxc/ibatis/builder/xml/XMLMapperEntityResolver.java
+
+```java
+/**
+ * 如果ＳＡＸ应用程序实现自定义处理外部实体,则必须实现此接口EntityResolver,
+ * 并使用setEntityResolver方法向SAX 驱动器注册一个实例
+ */
+public class XMLMapperEntityResolver implements EntityResolver {
+
+    private static final String IBATIS_CONFIG_SYSTEM = "ibatis-3-config.dtd";
+    private static final String MYBATIS_CONFIG_SYSTEM = "mybatis-3-config.dtd";
+
+    private static final String MYBATIS_MAPPER_SYSTEM = "mybatis-3-mapper.dtd";
+
+    private static final String IBATIS_MAPPER_SYSTEM = "ibatis-3-mapper.dtd";
+
+    private static final String MYBATIS_CONFIG_DTD = "com/jingxc/ibatis/builder/xml/mybatis-3-config.dtd";
+    private static final String MYBATIS_MAPPER_DTD = "com/jingxc/ibatis/builder/xml/mybatis-3-mapper.dtd";
+
+    /**
+     * 对于解析一个xml,sax
+     * 首先会读取该xml文档上的声明,根据声明去寻找相应的dtd定义,以便对文档的进行验证,
+     * 默认的寻找规则,(即:通过网络,实现上就是声明DTD的地址URI地址来下载DTD声明),
+     * 并进行认证,下载的过程是一个漫长的过程,而且当网络不可用时,这里会报错,就是因为相应的dtd没找到
+     *
+     * @param publicId The public identifier of the external entity
+     *                 being referenced, or null if none was supplied.
+     * @param systemId The system identifier of the external entity
+     *                 being referenced.
+     * @return
+     */
+    @Override
+    public InputSource resolveEntity(String publicId, String systemId) throws SAXException {
+        // EntityResolver 的作用就是项目本身就可以提供一个如何寻找DTD 的声明方法,
+        // 即:由程序来实现寻找DTD声明的过程,我们将DTD放在项目的某处在实现时直接将此文档读取并返回个SAX即可,这样就避免了通过网络来寻找DTD的声明
+        try {
+            if (systemId != null) {
+                String lowerCaseSystemId = systemId.toLowerCase(Locale.ENGLISH);
+                if (lowerCaseSystemId.contains(MYBATIS_CONFIG_SYSTEM) || lowerCaseSystemId.contains(IBATIS_CONFIG_SYSTEM)) {
+                    return getInputSource(MYBATIS_CONFIG_DTD, publicId, systemId);
+                } else if (lowerCaseSystemId.contains(MYBATIS_MAPPER_SYSTEM) || lowerCaseSystemId.contains(IBATIS_MAPPER_SYSTEM)) {
+                    return getInputSource(MYBATIS_MAPPER_DTD, publicId, systemId);
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            throw new SAXException(e.toString());
+        }
+    }
+
+    /**
+     * 具体的声明方法
+     *
+     * @param path
+     * @param publicId
+     * @param systemId
+     * @return
+     */
+    private InputSource getInputSource(String path, String publicId, String systemId) {
+        InputSource source = null;
+        if (path != null) {
+            try {
+                InputStream in = Resources.getResourceAsStream(path);
+                source = new InputSource(in);
+                source.setSystemId(systemId);
+                source.setPublicId(publicId);
+            } catch (IOException ignore) {
+                ignore.printStackTrace();
+            }
+        }
+        return source;
+    }
+}
+```
+
+### XML文件构建
+
+构建SqlSessionFactory是通过构建者SqlSessionFactoryBuilder构建的，SqlSessionFactoryBuilder首先构建了一个XML文挡构建者，
+这里体现了多次使用构建者模式以减少类创建的复杂程度，由于代码还未完善暂不贴出全部代码
+
+#### TEST
+
+```java
+public class IbatisTest {
+    @Test
+    public void test1() throws IOException {
+        // 1.通过类加载器对配置文件进行加载，加载成字节数入流，存到内存中，注意：配置文件并没有被解析
+        InputStream inputStream = Resources.getResourceAsStream("sqlMapConfig.xml");
+
+        // 通过构建者模式，构建SqlSessionFactory工厂
+        SqlSessionFactory build = new SqlSessionFactoryBuilder().build(inputStream);
+        System.out.println(inputStream);
+    }
+}
+```
+
+#### SqlSessionFactoryBuilder
+
+```java
+public class SqlSessionFactoryBuilder {
+
+    /**
+     * 直接通过文件流，构建session工厂
+     *
+     * @param inputStream
+     * @return
+     */
+    public SqlSessionFactory build(InputStream inputStream) {
+        return build(inputStream, null, null);
+    }
+
+    public SqlSessionFactory build(InputStream inputStream, String environment, Properties properties) {
+        // XMLConfigBuilder：用来解析xml配置文件
+        // 使用构建者模式，降低耦合，分离复杂对象的创建
+        // 1.创建XPathParser解析器对象，根据inputStream解析成Document对象; 2.创建全剧配置对象Configuration
+        XMLConfigBuilder xmlConfigBuilder = new XMLConfigBuilder(inputStream, environment, properties);
+        return null;
+    }
+}
+```
+
+#### XMLConfigBuilder
+
+```java
+public class XMLConfigBuilder {
+    public XMLConfigBuilder(InputStream inputStream, String environment, Properties props) {
+        // XPathParser基于Java XPath解析器，用于解析Mybatis配置文件
+        this(new XPathParser(inputStream, true, props, new XMLMapperEntityResolver()), environment, props);
+    }
+
+    private XMLConfigBuilder(XPathParser parser, String environment, Properties props) {
+
+    }
+}
+```
+
+#### 解析器：XPathParser
+
+```java
+public class XPathParser {
+
+    private boolean validation;
+    // 使 XML 加载的过程中不需要通过网络下载约束文件。这种情况下，通过EntityResolver告诉解析器如何找到正确的约束文件
+    private EntityResolver entityResolver;
+    private Properties variables;
+
+    // XPath是一种在XML文档中定位节点的语言，它可以根据节点的属性、元素名称等条件来进行查询。在Java中，可以使用XPath来操作XML文档，实现对特定节点的查找、遍历和修改等操作
+    private XPath xpath;
+
+    private final Document document;
+
+    public XPathParser(InputStream inputStream, boolean validation, Properties variables, EntityResolver entityResolver) {
+        commonConstructor(validation, variables, entityResolver);
+        this.document = createDocument(new InputSource(inputStream));
+    }
+
+    private Document createDocument(InputSource inputSource) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            factory.setValidating(validation);
+            factory.setNamespaceAware(false);
+            factory.setIgnoringComments(true);
+            factory.setIgnoringElementContentWhitespace(false);
+            factory.setCoalescing(false);
+            factory.setExpandEntityReferences(true);
+
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            builder.setEntityResolver(entityResolver);
+
+            builder.setErrorHandler(new ErrorHandler() {
+                @Override
+                public void error(SAXParseException exception) throws SAXException {
+                    throw exception;
+                }
+
+                @Override
+                public void fatalError(SAXParseException exception) throws SAXException {
+                    throw exception;
+                }
+
+                @Override
+                public void warning(SAXParseException exception) throws SAXException {
+                    // NOP
+                }
+            });
+            return builder.parse(inputSource);
+        } catch (Exception e) {
+            throw new RuntimeException("创建document出错.  原因: " + e, e);
+        }
+
+    }
+
+    private void commonConstructor(boolean validation, Properties variables, EntityResolver entityResolver) {
+        this.validation = validation;
+        this.entityResolver = entityResolver;
+        this.variables = variables;
+
+        // 创建XPath对象
+        XPathFactory xPathFactory = XPathFactory.newInstance();
+        this.xpath = xPathFactory.newXPath();
+    }
+}
+```
+
+这就完成了XPathParser解析器的创建，接下来就可以就可以创建并解析全局配置文件Configuration
+

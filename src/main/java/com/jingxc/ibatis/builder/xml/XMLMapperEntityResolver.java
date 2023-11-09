@@ -41,7 +41,7 @@ public class XMLMapperEntityResolver implements EntityResolver {
     @Override
     public InputSource resolveEntity(String publicId, String systemId) throws SAXException {
         // EntityResolver 的作用就是项目本身就可以提供一个如何寻找DTD 的声明方法,
-        // 即:由程序来实现寻找DTD声明的过程,比如我们将DTD放在项目的某处在实现时直接将此文档读取并返回个SAX即可,这样就避免了通过网络来寻找DTD的声明
+        // 即:由程序来实现寻找DTD声明的过程,我们将DTD放在项目的某处在实现时直接将此文档读取并返回个SAX即可,这样就避免了通过网络来寻找DTD的声明
         try {
             if (systemId != null) {
                 String lowerCaseSystemId = systemId.toLowerCase(Locale.ENGLISH);

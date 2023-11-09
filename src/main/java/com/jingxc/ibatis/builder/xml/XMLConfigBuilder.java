@@ -12,6 +12,6 @@ public class XMLConfigBuilder {
     }
 
     private XMLConfigBuilder(XPathParser parser, String environment, Properties props) {
-        
+        // 创建Configuration对象，并通过TypeAliasRegistry注册一些Mybatis内部相关类的别名
     }
 }

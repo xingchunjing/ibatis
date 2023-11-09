@@ -1,6 +1,7 @@
 package com.jingxc.ibatis.test;
 
 import com.jingxc.ibatis.io.Resources;
+import com.jingxc.ibatis.session.SqlSessionFactory;
 import com.jingxc.ibatis.session.SqlSessionFactoryBuilder;
 import org.junit.Test;
 
@@ -16,7 +17,7 @@ public class IbatisTest {
         InputStream inputStream = Resources.getResourceAsStream("sqlMapConfig.xml");
 
         // 通过构建者模式，构建SqlSessionFactory工厂
-        new SqlSessionFactoryBuilder().build(inputStream);
+        SqlSessionFactory build = new SqlSessionFactoryBuilder().build(inputStream);
         System.out.println(inputStream);
 
     }
