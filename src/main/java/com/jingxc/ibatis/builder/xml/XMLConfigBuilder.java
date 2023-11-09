@@ -12,6 +12,6 @@ public class XMLConfigBuilder {
     }
 
     private XMLConfigBuilder(XPathParser parser, String environment, Properties props) {
-        System.out.println("-----");
+        
     }
 }

@@ -190,7 +190,7 @@ public class ClassLoaderWrapper {
 }
 ```
 
-* <font color=red>多次使用重载<font/>
+* 多次使用重载
 
 今日完成：已完成dtd文件的读取对xml文件进行校验
 
@@ -202,3 +202,27 @@ java.io.IOException: 未发现资源文件 com/jingxc/ibatis/builder/xml/mybatis
 	at com.jingxc.ibatis.io.Resources.getResourceAsStream(Resources.java:19)
 ```
 
+### 20231109
+
+解决遗留问题：昨天写到需要读取xml配置，并通过dtd进行文件校验，在读取到publicId和systemId后通过dtd校验时，我发获取到资源文件com/jingxc/ibatis/builder/xml/mybatis-3-config.dtd
+
+原因所在：java在运行代码时，需要先将资源文件编译进classpath路径下，在从classpath中获取资源文件以及代码运行，但是springboot默认是从src/main/resources中读取，所以为加载到mybatis-3-config.dtd文件
+
+解决办法：
+
+* 将资源文件都放在src/main/resources中
+* 添加配置单独引入资源文件,在pom文件中添加
+
+```xml
+
+<build>
+    <resources>
+        <resource>
+            <directory>src/main/java</directory>
+            <includes>
+                <include>**/*.dtd</include>
+            </includes>
+        </resource>
+    </resources>
+</build>
+```
