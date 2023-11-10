@@ -449,3 +449,450 @@ public class XPathParser {
 
 这就完成了XPathParser解析器的创建，接下来就可以就可以创建并解析全局配置文件Configuration
 
+### 20231110
+
+**昨天写到：** 通过XMLConfigBuilder构建者的构造器创建完成XPathParser解析器，调用XMLConfigBuilder构建者的parse方法即可封装获取XNode节点，进而封装全剧配置类Configuration
+**后续完成：** 已经拿到XPathParser解析器，接下来就可以通过解析器XPathParser的evalNode方法获取Node节点，并封装成ibatis的
+XNode节点，在封装XNode过程中已经处理了变量描述符
+
+#### XMLConfigBuilder构建者的parse方法
+
+```java
+public class XMLConfigBuilder extends BaseBuilder {
+
+    private boolean parsed;
+
+    // XPath解析器
+    private final XPathParser xPathParser;
+
+    private String environment;
+
+    public XMLConfigBuilder(InputStream inputStream, String environment, Properties props) {
+        // XPathParser基于Java XPath解析器，用于解析Mybatis配置文件
+        this(new XPathParser(inputStream, true, props, new XMLMapperEntityResolver()), environment, props);
+    }
+
+    /**
+     * 构造器
+     *
+     * @param xPathParser
+     * @param environment
+     * @param props
+     */
+    private XMLConfigBuilder(XPathParser xPathParser, String environment, Properties props) {
+        // 在父抽象类中定义（父类属性）
+        // 创建Configuration对象，并通过TypeAliasRegistry注册一些Mybatis内部相关类的别名
+        super(new Configuration());
+
+        // 在MyBatis的源代码中，ErrorContext.instance().resource("SQL Mapper Configuration")这行代码用于创建一个ErrorContext的实例，并将资源名称设置为"SQL Mapper Configuration"。
+
+        // ErrorContext是MyBatis中的一个类，用于处理错误信息。它主要用于记录错误的上下文信息，包括发生错误的位置、错误的原因等。通过使用ErrorContext.instance().resource("SQL Mapper Configuration")，可以创建一个错误上下文实例，并将当前错误的资源名称设置为"SQL Mapper Configuration"。
+
+        // 这个资源名称通常是指MyBatis的映射配置文件，例如Mapper XML文件。当MyBatis在处理映射配置文件时出现错误，就会使用这个资源名称来标识错误的来源。这样，在打印错误信息时，可以更清晰地知道错误发生在哪个映射配置文件上，方便开发者进行调试和排查问题。
+
+        // 总结起来，这行代码的作用是创建一个错误上下文实例，并将当前错误的资源名称设置为"SQL Mapper Configuration"，以便在后续处理中能够更准确地标识错误的来源。
+        // ErrorContext.instance().resource("SQL Mapper Configuration");
+
+        // 设置属性集
+        this.configuration.setVariables(props);
+
+        // 执行标记
+        this.parsed = false;
+        // XPath解析器
+        this.xPathParser = xPathParser;
+        this.environment = environment;
+    }
+
+    public Configuration parse() {
+        if (parsed) {
+            throw new RuntimeException("每个XMLConfigBuilder构建者只能被创建一次");
+        }
+        parsed = true;
+
+        // 解析配置文件初始化Configuration
+        XNode xNode = xPathParser.evalNode("/configuration");
+        XNode environments = xNode.evalNode("environments");
+
+        System.out.println(environments.toString());
+        return null;
+    }
+}
+```
+
+这里已经解析到了XNode xNode = xPathParser.evalNode("/configuration")，后续在调用相关方法，即可完成全局配置文件Configuration的创建
+在解析XNode的过程中调用了evalNode方法
+
+#### 解析器XPathParser的evalNode方法
+
+```java
+public class XPathParser {
+
+    private boolean validation;
+    // 使 XML 加载的过程中不需要通过网络下载约束文件。这种情况下，通过EntityResolver告诉解析器如何找到正确的约束文件
+    private EntityResolver entityResolver;
+
+    // 属性集
+    private Properties variables;
+
+    // XPath是一种在XML文档中定位节点的语言，它可以根据节点的属性、元素名称等条件来进行查询。在Java中，可以使用XPath来操作XML文档，实现对特定节点的查找、遍历和修改等操作
+    private XPath xpath;
+
+    // 用于描述HTML或XML文档。它提供了许多方法，可以获取文档的信息，其中包括文档的标题、元素、属性等等。使用Document类，我们可以方便地获取HTML或XML文档中的信息，以便我们对文档进行各种操作。
+    private final Document document;
+
+    public XPathParser(InputStream inputStream, boolean validation, Properties variables, EntityResolver entityResolver) {
+        // 前面已经完成，此处省略....
+    }
+
+    private void commonConstructor(boolean validation, Properties variables, EntityResolver entityResolver) {
+        // 前面已经完成，此处省略....
+    }
+
+    /**
+     * 根据节点名称expression获取XNode节点
+     *
+     * @param expression
+     * @return
+     */
+    public XNode evalNode(String expression) {
+        return evalNode(document, expression);
+    }
+
+    /**
+     * 根具节点名称expression，从Document对象中获取XNode对像
+     *
+     * @param root
+     * @param expression
+     * @return
+     */
+    public XNode evalNode(Object root, String expression) {
+        // 解析Node对象
+        Node node = (Node) evaluate(expression, root, XPathConstants.NODE);
+        if (null == node) {
+            return null;
+        }
+        // 封装并返回ibatis封装的XNode对，这里已经对变量描述符做了调整，具体在GenericTokenParser中
+        return new XNode(this, node, variables);
+    }
+
+    /**
+     * 从root对象中解析expression对应标签，返回returnType实体对象
+     *
+     * @param expression
+     * @param root
+     * @param returnType
+     * @return
+     */
+    private Object evaluate(String expression, Object root, QName returnType) {
+        try {
+            // 解析标签返回对象jdk方法
+            return xpath.evaluate(expression, root, returnType);
+        } catch (XPathExpressionException e) {
+            throw new RuntimeException("构建xpath出错.  原因: " + e, e);
+        }
+    }
+
+    private Document createDocument(InputSource inputSource) {
+        // 前面已经完成，此处省略....
+    }
+}
+```
+
+在evalNode方法中主要是将Document对象中的Node节点封装成XNode节点
+
+```java
+public class XNode {
+
+    // XPath解析器对象
+    private final XPathParser xPathParser;
+
+    // Node节点对象
+    private final Node node;
+
+    // 属性集
+    private final Properties variables;
+
+    //  Node(配置文件)节点属性集
+    private final Properties attributes;
+
+    // 节点名称
+    private final String name;
+
+    private final String body;
+
+    public XNode(XPathParser xPathParser, Node node, Properties variables) {
+        // 解析器
+        this.xPathParser = xPathParser;
+        // 节点
+        this.node = node;
+        this.name = node.getNodeName();
+        // 属性集
+        this.variables = variables;
+
+        // Node节点属性集
+        this.attributes = parseAttribute(node);
+
+        this.body = parseBody(node);
+
+    }
+
+    private String parseBody(Node node) {
+        // 获取第一个不是null的bodyData
+        String data = getBodyData(node);
+        if (data == null) {
+            NodeList childNodes = node.getChildNodes();
+            for (int i = 0; i < childNodes.getLength(); i++) {
+                Node item = childNodes.item(i);
+                data = getBodyData(item);
+                if (data != null) {
+                    break;
+                }
+
+            }
+        }
+        return data;
+    }
+
+    private String getBodyData(Node node) {
+        if (node.getNodeType() == Node.CDATA_SECTION_NODE || node.getNodeType() == Node.TEXT_NODE) {
+            String data = ((CharacterData) node).getData();
+            data = PropertyParser.parse(data, variables);
+            return data;
+        }
+        return null;
+    }
+
+    /**
+     * 获取并创建Node节点属性集
+     *
+     * @param node
+     * @return
+     */
+    private Properties parseAttribute(Node node) {
+        // 创建属性集
+        Properties properties = new Properties();
+        // 获取节点属性集
+        NamedNodeMap nameNodeMap = node.getAttributes();
+        if (nameNodeMap != null) {
+            // 循环node节点属性封装Properties属性集
+            for (int i = 0; i < nameNodeMap.getLength(); i++) {
+                Node n = nameNodeMap.item(i);
+                // 获取节点属性值，并处理变量描述符
+                String value = PropertyParser.parse(n.getNodeValue(), variables);
+
+                // 节点属性集赋值
+                properties.put(n.getNodeName(), value);
+            }
+        }
+        return properties;
+    }
+
+    public XNode evalNode(String expression) {
+        return xPathParser.evalNode(node, expression);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        toString(builder, 0);
+        return builder.toString();
+    }
+
+    private void toString(StringBuilder builder, int level) {
+        builder.append("<");
+        builder.append(name);
+        for (Map.Entry<Object, Object> entry : attributes.entrySet()) {
+            builder.append(" ");
+            builder.append(entry.getKey());
+            builder.append("=\"");
+            builder.append(entry.getValue());
+            builder.append("\"");
+        }
+        List<XNode> children = getChildren();
+        if (!children.isEmpty()) {
+            builder.append(">\n");
+            for (XNode child : children) {
+                indent(builder, level + 1);
+                child.toString(builder, level + 1);
+            }
+            indent(builder, level);
+            builder.append("</");
+            builder.append(name);
+            builder.append(">");
+        } else if (body != null) {
+            builder.append(">");
+            builder.append(body);
+            builder.append("</");
+            builder.append(name);
+            builder.append(">");
+        } else {
+            builder.append("/>");
+            indent(builder, level);
+        }
+        builder.append("\n");
+    }
+
+    private void indent(StringBuilder builder, int level) {
+        for (int i = 0; i < level; i++) {
+            builder.append("    ");
+        }
+    }
+
+    public List<XNode> getChildren() {
+        List<XNode> children = new ArrayList<>();
+        NodeList nodeList = node.getChildNodes();
+        if (nodeList != null) {
+            for (int i = 0, n = nodeList.getLength(); i < n; i++) {
+                Node node = nodeList.item(i);
+                if (node.getNodeType() == Node.ELEMENT_NODE) {
+                    children.add(new XNode(xPathParser, node, variables));
+                }
+            }
+        }
+        return children;
+    }
+}
+```
+
+在XNode类中主要是对节点封装，并在PropertyParser.parse方法中处理了变量描述符
+
+#### PropertyParser
+
+```java
+public class PropertyParser {
+
+    private static final String KEY_PREFIX = "com.jingxc.ibatis.parsing.PropertyParser.";
+
+    public static final String KEY_ENABLE_DEFAULT_VALUE = KEY_PREFIX + "enable-default-value";
+
+    public static final String KEY_DEFAULT_VALUE_SEPARATOR = KEY_PREFIX + "default-value-separator";
+
+    private static final String ENABLE_DEFAULT_VALUE = "false";
+
+    private static final String DEFAULT_VALUE_SEPARATOR = ":";
+
+    /**
+     * 对比获取属性值(默认值，传入值)
+     *
+     * @param nodeValue
+     * @param variables
+     * @return
+     */
+    public static String parse(String nodeValue, Properties variables) {
+        // 拦截器
+        VariableTokenHandler h = new VariableTokenHandler(variables);
+        // 去除变量描述字符
+        GenericTokenParser genericTokenParser = new GenericTokenParser("${", "}", h);
+
+        return genericTokenParser.parse(nodeValue);
+    }
+
+    private static class VariableTokenHandler implements TokenHandler {
+
+        private final Properties variables;
+        private final boolean enableDefaultValue;
+
+        private final String defaultValueSeparator;
+
+        public VariableTokenHandler(Properties variables) {
+            this.variables = variables;
+            this.enableDefaultValue = Boolean.parseBoolean(getPropertyValue(KEY_ENABLE_DEFAULT_VALUE, ENABLE_DEFAULT_VALUE));
+            this.defaultValueSeparator = getPropertyValue(KEY_DEFAULT_VALUE_SEPARATOR, DEFAULT_VALUE_SEPARATOR);
+        }
+
+        private String getPropertyValue(String key, String defaultValue) {
+            return variables == null ? defaultValue : variables.getProperty(key, defaultValue);
+        }
+
+        @Override
+        public String handleToken(String content) {
+            return null;
+        }
+    }
+}
+```
+
+#### GenericTokenParser
+
+```java
+public class GenericTokenParser {
+
+    private final String openToken;
+    private final String closeToken;
+    private final TokenHandler handler;
+
+    public GenericTokenParser(String openToken, String closeToken, TokenHandler h) {
+        this.openToken = openToken;
+        this.closeToken = closeToken;
+        this.handler = h;
+    }
+
+    public String parse(String text) {
+        if (null == text) {
+            return "";
+        }
+        int start = text.indexOf(openToken);
+
+        // 如果text中不包含openToken,则直接返回，否则需要预处理，mysql中变量${}
+        if (start == -1) {
+            return text;
+        }
+
+        // 转换为字符集
+        char[] src = text.toCharArray();
+        // 偏移量
+        int offset = 0;
+
+        final StringBuilder builder = new StringBuilder();
+        StringBuilder expression = null;
+        do {
+            if (start > 0 && src[start - 1] == '\\') {
+                // 删除openToken前的转译字符，如\${==>${
+                builder.append(src, offset, start - offset - 1).append(openToken);
+                // 使偏移量移至openToken后面
+                offset = start + openToken.length();
+            } else {
+                if (expression == null) {
+                    expression = new StringBuilder();
+                } else {
+                    expression.setLength(0);
+                }
+
+                builder.append(src, offset, start - offset);
+                offset = start + openToken.length();
+
+                // 返回此字符串中第一次出现指定子字符串的索引，从指定索引开始。
+                // 处理完openToken，接着处理closeToken
+                int end = text.indexOf(closeToken, offset);
+                while (end > -1) {
+                    if (end > offset && src[end - 1] == '\\') {
+                        // 仅仅删除转义字符
+                        expression.append(src, offset, end - offset - 1).append(closeToken);
+                        offset = end + closeToken.length();
+                        // 获取end的相对位置不变，只是为了去除转译字符，用于与openToken配对只能是，text的第一个
+                        end = text.indexOf(closeToken, offset);
+                    } else {
+                        // 遇见配对的直接结束循环
+                        expression.append(src, offset, end - offset);
+                        break;
+                    }
+                }
+                if (end == -1) {
+                    // 没有发现closeToken
+                    builder.append(src, start, src.length - start);
+                    offset = src.length;
+                } else {
+                    // 发现closeToken，拼接在 while (end > -1)循环中存储的中间字符
+                    builder.append(handler.handleToken(expression.toString()));
+                    offset = end + closeToken.length();
+                }
+            }
+            start = text.indexOf(openToken, offset);
+        } while (start > -1);
+        if (offset < src.length) {
+            builder.append(src, offset, src.length - offset);
+        }
+        return builder.toString();
+    }
+}
+```

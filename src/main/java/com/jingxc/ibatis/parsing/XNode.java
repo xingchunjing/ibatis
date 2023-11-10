@@ -46,6 +46,7 @@ public class XNode {
     }
 
     private String parseBody(Node node) {
+        // 获取第一个不是null的bodyData
         String data = getBodyData(node);
         if (data == null) {
             NodeList childNodes = node.getChildNodes();

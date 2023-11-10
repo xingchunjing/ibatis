@@ -47,10 +47,23 @@ public class XPathParser {
         this.xpath = xPathFactory.newXPath();
     }
 
+    /**
+     * 根据节点名称expression获取XNode节点
+     *
+     * @param expression
+     * @return
+     */
     public XNode evalNode(String expression) {
         return evalNode(document, expression);
     }
 
+    /**
+     * 根具节点名称expression，从Document对象中获取XNode对像
+     *
+     * @param root
+     * @param expression
+     * @return
+     */
     public XNode evalNode(Object root, String expression) {
         // 解析Node对象
         Node node = (Node) evaluate(expression, root, XPathConstants.NODE);
