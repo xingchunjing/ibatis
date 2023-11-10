@@ -386,6 +386,8 @@ public class XPathParser {
     private boolean validation;
     // 使 XML 加载的过程中不需要通过网络下载约束文件。这种情况下，通过EntityResolver告诉解析器如何找到正确的约束文件
     private EntityResolver entityResolver;
+
+    // 属性集，赋值操作会在，propertiesElement(root.evalNode("properties"));进行或者在构建XMLConfigBuilder直接传入
     private Properties variables;
 
     // XPath是一种在XML文档中定位节点的语言，它可以根据节点的属性、元素名称等条件来进行查询。在Java中，可以使用XPath来操作XML文档，实现对特定节点的查找、遍历和修改等操作
@@ -532,7 +534,7 @@ public class XPathParser {
     // 使 XML 加载的过程中不需要通过网络下载约束文件。这种情况下，通过EntityResolver告诉解析器如何找到正确的约束文件
     private EntityResolver entityResolver;
 
-    // 属性集
+    // 属性集，赋值操作会在，propertiesElement(root.evalNode("properties"));进行或者在构建XMLConfigBuilder直接传入
     private Properties variables;
 
     // XPath是一种在XML文档中定位节点的语言，它可以根据节点的属性、元素名称等条件来进行查询。在Java中，可以使用XPath来操作XML文档，实现对特定节点的查找、遍历和修改等操作
@@ -894,6 +896,87 @@ public class GenericTokenParser {
             builder.append(src, offset, src.length - offset);
         }
         return builder.toString();
+    }
+}
+```
+
+在解析XNode对象时，会对节点内容进行拦截，并将变量描述符修改替换为真实参数，主要从属性集Properties中获取和替换
+
+```java
+public class PropertyParser {
+
+    private static final String KEY_PREFIX = "com.jingxc.ibatis.parsing.PropertyParser.";
+
+    public static final String KEY_ENABLE_DEFAULT_VALUE = KEY_PREFIX + "enable-default-value";
+
+    public static final String KEY_DEFAULT_VALUE_SEPARATOR = KEY_PREFIX + "default-value-separator";
+
+    private static final String ENABLE_DEFAULT_VALUE = "false";
+
+    private static final String DEFAULT_VALUE_SEPARATOR = ":";
+
+    /**
+     * 对比获取属性值(默认值，传入值)
+     *
+     * @param nodeValue
+     * @param variables
+     * @return
+     */
+    public static String parse(String nodeValue, Properties variables) {
+        // 拦截器
+        VariableTokenHandler h = new VariableTokenHandler(variables);
+        // 去除变量描述字符
+        GenericTokenParser genericTokenParser = new GenericTokenParser("${", "}", h);
+
+        return genericTokenParser.parse(nodeValue);
+    }
+
+    private static class VariableTokenHandler implements TokenHandler {
+
+        private final Properties variables;
+        private final boolean enableDefaultValue;
+
+        private final String defaultValueSeparator;
+
+        public VariableTokenHandler(Properties variables) {
+            this.variables = variables;
+            this.enableDefaultValue = Boolean.parseBoolean(getPropertyValue(KEY_ENABLE_DEFAULT_VALUE, ENABLE_DEFAULT_VALUE));
+            this.defaultValueSeparator = getPropertyValue(KEY_DEFAULT_VALUE_SEPARATOR, DEFAULT_VALUE_SEPARATOR);
+        }
+
+        private String getPropertyValue(String key, String defaultValue) {
+            return variables == null ? defaultValue : variables.getProperty(key, defaultValue);
+        }
+
+        /**
+         * 在对属性集赋值以后就会修改变量描述符
+         * @param content
+         * @return
+         */
+        @Override
+        public String handleToken(String content) {
+            System.out.println("进入拦截器：" + content);
+            // 对变量描述符进行替换，并从属性集中获取真实字段
+            if (variables != null) {
+                String key = content;
+                if (enableDefaultValue) {
+                    final int separator = content.indexOf(defaultValueSeparator);
+                    String defaultValue = null;
+                    if (separator >= 0) {
+                        key = content.substring(0, separator);
+                        // <property name="username" value="${username:ut_user}"/>
+                        defaultValue = content.substring(separator + defaultValueSeparator.length());
+                    }
+                    if (defaultValue != null) {
+                        return variables.getProperty(key, defaultValue);
+                    }
+                }
+                if (variables.contains(key)) {
+                    return variables.getProperty(key);
+                }
+            }
+            return "${" + content + "}";
+        }
     }
 }
 ```

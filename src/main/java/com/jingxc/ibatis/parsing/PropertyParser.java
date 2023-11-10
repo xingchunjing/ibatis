@@ -26,7 +26,7 @@ public class PropertyParser {
         VariableTokenHandler h = new VariableTokenHandler(variables);
         // 去除变量描述字符
         GenericTokenParser genericTokenParser = new GenericTokenParser("${", "}", h);
-        
+
         return genericTokenParser.parse(nodeValue);
     }
 
@@ -47,9 +47,35 @@ public class PropertyParser {
             return variables == null ? defaultValue : variables.getProperty(key, defaultValue);
         }
 
+        /**
+         * 在对属性集赋值以后就会修改变量描述符
+         *
+         * @param content
+         * @return
+         */
         @Override
         public String handleToken(String content) {
-            return null;
+            System.out.println("进入拦截器：" + content);
+            // 对变量描述符进行替换，并从属性集中获取真实字段
+            if (variables != null) {
+                String key = content;
+                if (enableDefaultValue) {
+                    final int separator = content.indexOf(defaultValueSeparator);
+                    String defaultValue = null;
+                    if (separator >= 0) {
+                        key = content.substring(0, separator);
+                        // <property name="username" value="${username:ut_user}"/>
+                        defaultValue = content.substring(separator + defaultValueSeparator.length());
+                    }
+                    if (defaultValue != null) {
+                        return variables.getProperty(key, defaultValue);
+                    }
+                }
+                if (variables.contains(key)) {
+                    return variables.getProperty(key);
+                }
+            }
+            return "${" + content + "}";
         }
     }
 }

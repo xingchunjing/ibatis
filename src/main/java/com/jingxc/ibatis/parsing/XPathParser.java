@@ -21,7 +21,7 @@ public class XPathParser {
     // 使 XML 加载的过程中不需要通过网络下载约束文件。这种情况下，通过EntityResolver告诉解析器如何找到正确的约束文件
     private EntityResolver entityResolver;
 
-    // 属性集
+    // 属性集,赋值操作会在，propertiesElement(root.evalNode("properties"));进行或者在构建XMLConfigBuilder直接传入
     private Properties variables;
 
     // XPath是一种在XML文档中定位节点的语言，它可以根据节点的属性、元素名称等条件来进行查询。在Java中，可以使用XPath来操作XML文档，实现对特定节点的查找、遍历和修改等操作
