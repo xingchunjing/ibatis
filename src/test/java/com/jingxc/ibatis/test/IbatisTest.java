@@ -16,7 +16,7 @@ public class IbatisTest {
         InputStream inputStream = Resources.getResourceAsStream("sqlMapConfig.xml");
 
         // 通过构建者模式，构建SqlSessionFactory工厂
-        new SqlSessionFactoryBuilder().build(inputStream)
+        new SqlSessionFactoryBuilder().build(inputStream);
         System.out.println(inputStream);
 
     }

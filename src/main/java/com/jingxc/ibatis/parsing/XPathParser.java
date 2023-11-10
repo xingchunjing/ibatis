@@ -20,6 +20,8 @@ public class XPathParser {
     private boolean validation;
     // 使 XML 加载的过程中不需要通过网络下载约束文件。这种情况下，通过EntityResolver告诉解析器如何找到正确的约束文件
     private EntityResolver entityResolver;
+
+    // 属性集
     private Properties variables;
 
     // XPath是一种在XML文档中定位节点的语言，它可以根据节点的属性、元素名称等条件来进行查询。在Java中，可以使用XPath来操作XML文档，实现对特定节点的查找、遍历和修改等操作
@@ -50,15 +52,26 @@ public class XPathParser {
     }
 
     public XNode evalNode(Object root, String expression) {
+        // 解析Node对象
         Node node = (Node) evaluate(expression, root, XPathConstants.NODE);
         if (null == node) {
             return null;
         }
+        // 封装并返回ibatis封装的XNode对，这里已经对变量描述符做了调整，具体在GenericTokenParser中
         return new XNode(this, node, variables);
     }
 
+    /**
+     * 从root对象中解析expression对应标签，返回returnType实体对象
+     *
+     * @param expression
+     * @param root
+     * @param returnType
+     * @return
+     */
     private Object evaluate(String expression, Object root, QName returnType) {
         try {
+            // 解析标签返回对象jdk方法
             return xpath.evaluate(expression, root, returnType);
         } catch (XPathExpressionException e) {
             throw new RuntimeException("构建xpath出错.  原因: " + e, e);
@@ -71,6 +84,7 @@ public class XPathParser {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
             factory.setValidating(validation);
+
             factory.setNamespaceAware(false);
             factory.setIgnoringComments(true);
             factory.setIgnoringElementContentWhitespace(false);
@@ -99,6 +113,7 @@ public class XPathParser {
             });
             return builder.parse(inputSource);
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException("创建document出错.  原因: " + e, e);
         }
 

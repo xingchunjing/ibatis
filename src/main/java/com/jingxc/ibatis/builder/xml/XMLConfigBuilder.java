@@ -46,6 +46,7 @@ public class XMLConfigBuilder extends BaseBuilder {
         // 设置属性集
         this.configuration.setVariables(props);
 
+        // 执行标记
         this.parsed = false;
         // XPath解析器
         this.xPathParser = xPathParser;
@@ -60,7 +61,7 @@ public class XMLConfigBuilder extends BaseBuilder {
 
         // 解析配置文件初始化Configuration
         XNode xNode = xPathParser.evalNode("/configuration");
-
+        XNode xNode1 = xNode.evalNode("/properties");
         return null;
     }
 }
