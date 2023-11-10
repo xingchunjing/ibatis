@@ -452,6 +452,7 @@ public class XPathParser {
 ### 20231110
 
 **昨天写到：** 通过XMLConfigBuilder构建者的构造器创建完成XPathParser解析器，调用XMLConfigBuilder构建者的parse方法即可封装获取XNode节点，进而封装全剧配置类Configuration
+
 **后续完成：** 已经拿到XPathParser解析器，接下来就可以通过解析器XPathParser的evalNode方法获取Node节点，并封装成ibatis的
 XNode节点，在封装XNode过程中已经处理了变量描述符
 
