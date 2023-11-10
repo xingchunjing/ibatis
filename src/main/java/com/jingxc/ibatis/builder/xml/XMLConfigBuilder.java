@@ -61,7 +61,9 @@ public class XMLConfigBuilder extends BaseBuilder {
 
         // 解析配置文件初始化Configuration
         XNode xNode = xPathParser.evalNode("/configuration");
-        XNode xNode1 = xNode.evalNode("/properties");
+        XNode environments = xNode.evalNode("environments");
+
+        System.out.println(environments.toString());
         return null;
     }
 }

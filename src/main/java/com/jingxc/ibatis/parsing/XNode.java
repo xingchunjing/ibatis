@@ -5,6 +5,9 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 public class XNode {
@@ -94,5 +97,66 @@ public class XNode {
 
     public XNode evalNode(String expression) {
         return xPathParser.evalNode(node, expression);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        toString(builder, 0);
+        return builder.toString();
+    }
+
+    private void toString(StringBuilder builder, int level) {
+        builder.append("<");
+        builder.append(name);
+        for (Map.Entry<Object, Object> entry : attributes.entrySet()) {
+            builder.append(" ");
+            builder.append(entry.getKey());
+            builder.append("=\"");
+            builder.append(entry.getValue());
+            builder.append("\"");
+        }
+        List<XNode> children = getChildren();
+        if (!children.isEmpty()) {
+            builder.append(">\n");
+            for (XNode child : children) {
+                indent(builder, level + 1);
+                child.toString(builder, level + 1);
+            }
+            indent(builder, level);
+            builder.append("</");
+            builder.append(name);
+            builder.append(">");
+        } else if (body != null) {
+            builder.append(">");
+            builder.append(body);
+            builder.append("</");
+            builder.append(name);
+            builder.append(">");
+        } else {
+            builder.append("/>");
+            indent(builder, level);
+        }
+        builder.append("\n");
+    }
+
+    private void indent(StringBuilder builder, int level) {
+        for (int i = 0; i < level; i++) {
+            builder.append("    ");
+        }
+    }
+
+    public List<XNode> getChildren() {
+        List<XNode> children = new ArrayList<>();
+        NodeList nodeList = node.getChildNodes();
+        if (nodeList != null) {
+            for (int i = 0, n = nodeList.getLength(); i < n; i++) {
+                Node node = nodeList.item(i);
+                if (node.getNodeType() == Node.ELEMENT_NODE) {
+                    children.add(new XNode(xPathParser, node, variables));
+                }
+            }
+        }
+        return children;
     }
 }
