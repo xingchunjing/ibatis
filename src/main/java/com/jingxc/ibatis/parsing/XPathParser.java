@@ -131,4 +131,8 @@ public class XPathParser {
         }
 
     }
+
+    public void setVariables(Properties variables) {
+        this.variables = variables;
+    }
 }

@@ -55,7 +55,6 @@ public class PropertyParser {
          */
         @Override
         public String handleToken(String content) {
-            System.out.println("进入拦截器：" + content);
             // 对变量描述符进行替换，并从属性集中获取真实字段
             if (variables != null) {
                 String key = content;

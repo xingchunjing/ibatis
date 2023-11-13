@@ -160,4 +160,31 @@ public class XNode {
         }
         return children;
     }
+
+    /**
+     * 获取子节点返回Properties
+     *
+     * @return
+     */
+    public Properties getChildrenAsProperties() {
+        Properties properties = new Properties();
+        // 获取子节点并通过name，value返回Properties
+        for (XNode child : getChildren()) {
+            String name = child.getStringAttribute("name");
+            String value = child.getStringAttribute("value");
+            if (name != null && value != null) {
+                properties.setProperty(name, value);
+            }
+        }
+        return properties;
+    }
+
+    public String getStringAttribute(String name) {
+        return getStringAttribute(name, (String) null);
+    }
+
+    public String getStringAttribute(String name, String def) {
+        String value = attributes.getProperty(name);
+        return value == null ? def : value;
+    }
 }

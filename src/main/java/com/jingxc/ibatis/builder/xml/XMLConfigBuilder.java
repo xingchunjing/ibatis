@@ -1,6 +1,7 @@
 package com.jingxc.ibatis.builder.xml;
 
 import com.jingxc.ibatis.builder.BaseBuilder;
+import com.jingxc.ibatis.io.Resources;
 import com.jingxc.ibatis.parsing.XNode;
 import com.jingxc.ibatis.parsing.XPathParser;
 import com.jingxc.ibatis.session.Configuration;
@@ -61,9 +62,78 @@ public class XMLConfigBuilder extends BaseBuilder {
 
         // 解析配置文件初始化Configuration
         XNode xNode = xPathParser.evalNode("/configuration");
-        XNode environments = xNode.evalNode("environments");
+        System.out.println(xNode.toString());
 
-        System.out.println(environments.toString());
-        return null;
+        // 从根结点开始解析并构建Configuration对象
+        parseConfiguration(xNode);
+
+        return configuration;
+    }
+
+    /**
+     * 解析XNode，构建Configuration对象
+     *
+     * @param xNode
+     */
+    private void parseConfiguration(XNode xNode) {
+        try {
+            // 属性集设置，主要解析在配置文件中的<properties></properties>
+            // 属性集可以在标签中直接配置，也可以通过配置文件传入，例
+            /**
+             * <properties resource="org/mybatis/example/config.properties">
+             *   <property name="username" value="dev_user"/>
+             *   <property name="password" value="F2Fa3!33TYyg"/>
+             * </properties>
+             *
+             * SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(reader, props);
+             */
+            XNode properties = xNode.evalNode("properties");
+            propertiesElement(properties);
+        } catch (Exception e) {
+            throw new RuntimeException("设置全局配置文件Configuration时出错，原因： " + e, e);
+        }
+
+    }
+
+    /**
+     * 解析属性集配置
+     *
+     * @param properties
+     */
+    private void propertiesElement(XNode properties) throws Exception {
+        if (properties != null) {
+            // 处理在 properties 元素的子元素中设置
+            /**
+             * <properties resource="org/mybatis/example/config.properties">
+             *   <property name="username" value="dev_user"/>
+             *   <property name="password" value="F2Fa3!33TYyg"/>
+             * </properties>
+             */
+            Properties def = properties.getChildrenAsProperties();
+
+            String resource = properties.getStringAttribute("resource");
+            String url = properties.getStringAttribute("url");
+            if (resource != null && url != null) {
+                throw new RuntimeException("属性集配置不允许url和resource同时配置");
+            }
+            // 读取资源文件中的配置
+            if (resource != null) {
+                def.putAll(Resources.getResourceAsProperties(resource));
+            } else if (url != null) {
+                def.putAll(Resources.getResourceAsProperties(url));
+            }
+
+            // 将构造器时传入的properties在重新赋值一遍给def，否则会被覆盖
+            Properties vars = configuration.getVariables();
+            if (vars != null) {
+                def.putAll(vars);
+            }
+
+            // 设置更新XPath属性
+            xPathParser.setVariables(def);
+
+            // 构建全剧配置文件configuration的variables属性
+            configuration.setVariables(def);
+        }
     }
 }

@@ -5,6 +5,11 @@
         >
 <configuration>
 
+    <!-- 属性集配置 -->
+    <properties resource="">
+        <property name="username" value="root"/>
+    </properties>
+
     <!-- 数据源配置 -->
     <environments default="development">
         <environment id="development">

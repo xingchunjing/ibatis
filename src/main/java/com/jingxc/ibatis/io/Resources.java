@@ -2,6 +2,7 @@ package com.jingxc.ibatis.io;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Properties;
 
 public class Resources {
 
@@ -32,5 +33,16 @@ public class Resources {
         if (in == null)
             throw new IOException("未发现资源文件 " + resource);
         return in;
+    }
+
+    /**
+     * 读取资源文件返回Properties
+     */
+    public static Properties getResourceAsProperties(String resource) throws IOException {
+        Properties properties = new Properties();
+        try (InputStream in = getResourceAsStream(resource)) {
+            properties.load(in);
+        }
+        return properties;
     }
 }
