@@ -4,6 +4,9 @@ import com.jingxc.ibatis.builder.BaseBuilder;
 import com.jingxc.ibatis.io.Resources;
 import com.jingxc.ibatis.parsing.XNode;
 import com.jingxc.ibatis.parsing.XPathParser;
+import com.jingxc.ibatis.reflection.DefaultReflectionFactory;
+import com.jingxc.ibatis.reflection.MetaClass;
+import com.jingxc.ibatis.reflection.ReflectionFactory;
 import com.jingxc.ibatis.session.Configuration;
 
 import java.io.InputStream;
@@ -17,6 +20,9 @@ public class XMLConfigBuilder extends BaseBuilder {
     private final XPathParser xPathParser;
 
     private String environment;
+
+    // 反射工厂
+    private ReflectionFactory localReflectorFactory = new DefaultReflectionFactory();
 
     public XMLConfigBuilder(InputStream inputStream, String environment, Properties props) {
         // XPathParser基于Java XPath解析器，用于解析Mybatis配置文件
@@ -89,9 +95,32 @@ public class XMLConfigBuilder extends BaseBuilder {
              */
             XNode properties = xNode.evalNode("properties");
             propertiesElement(properties);
+
+            // 设置
+            Properties settings = settingsAsProperties(xNode.evalNode("settings"));
         } catch (Exception e) {
             throw new RuntimeException("设置全局配置文件Configuration时出错，原因： " + e, e);
         }
+
+    }
+
+    /**
+     * 设置
+     *
+     * @param settings
+     * @return
+     */
+    private Properties settingsAsProperties(XNode settings) {
+        if (settings == null) {
+            return new Properties();
+        }
+        Properties props = settings.getChildrenAsProperties();
+
+        // XMLConfigBuilder在初始化的时候已经初始化了反射工厂，此时反射工厂中缓存为空，
+        // 在调用MetaClass.forClass时，会将入参Configuration的反射实体类创建并存放到反射工厂中
+        MetaClass metaClass = MetaClass.forClass(Configuration.class, localReflectorFactory);
+
+        return null;
 
     }
 

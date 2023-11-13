@@ -11,6 +11,10 @@
         <property name="username" value="root"/>
     </properties>
 
+    <settings>
+        <setting name="cacheEnabled" value="true"/>
+    </settings>
+
     <!-- 数据源配置 -->
     <environments default="development">
         <environment id="development">
