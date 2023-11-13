@@ -980,3 +980,274 @@ public class PropertyParser {
     }
 }
 ```
+
+### 20231113
+
+上面已经完成对配置文件的解析最终转换为XPathParser对象，接下来需要对配置进行进一步解析，最终完成全局配置文件Configuration的构建
+
+Configuration的构建主要是在XMLConfigBuilder对象中的parse()方法中；
+
+具体的实现流程在XMLConfigBuilder对象中的parseConfiguration(XNode xNode)
+
+#### XMLConfigBuilder->parse->parseConfiguration
+
+```java
+public class XMLConfigBuilder extends BaseBuilder {
+
+    private boolean parsed;
+
+    // XPath解析器
+    private final XPathParser xPathParser;
+
+    private String environment;
+
+    public XMLConfigBuilder(InputStream inputStream, String environment, Properties props) {
+        // XPathParser基于Java XPath解析器，用于解析Mybatis配置文件
+        this(new XPathParser(inputStream, true, props, new XMLMapperEntityResolver()), environment, props);
+    }
+
+    /**
+     * 构造器
+     *
+     * @param xPathParser
+     * @param environment
+     * @param props
+     */
+    private XMLConfigBuilder(XPathParser xPathParser, String environment, Properties props) {
+        // 在父抽象类中定义（父类属性）
+        // 创建Configuration对象，并通过TypeAliasRegistry注册一些Mybatis内部相关类的别名
+        super(new Configuration());
+
+        // 在MyBatis的源代码中，ErrorContext.instance().resource("SQL Mapper Configuration")这行代码用于创建一个ErrorContext的实例，并将资源名称设置为"SQL Mapper Configuration"。
+
+        // ErrorContext是MyBatis中的一个类，用于处理错误信息。它主要用于记录错误的上下文信息，包括发生错误的位置、错误的原因等。通过使用ErrorContext.instance().resource("SQL Mapper Configuration")，可以创建一个错误上下文实例，并将当前错误的资源名称设置为"SQL Mapper Configuration"。
+
+        // 这个资源名称通常是指MyBatis的映射配置文件，例如Mapper XML文件。当MyBatis在处理映射配置文件时出现错误，就会使用这个资源名称来标识错误的来源。这样，在打印错误信息时，可以更清晰地知道错误发生在哪个映射配置文件上，方便开发者进行调试和排查问题。
+
+        // 总结起来，这行代码的作用是创建一个错误上下文实例，并将当前错误的资源名称设置为"SQL Mapper Configuration"，以便在后续处理中能够更准确地标识错误的来源。
+        // ErrorContext.instance().resource("SQL Mapper Configuration");
+
+        // 设置属性集
+        this.configuration.setVariables(props);
+
+        // 执行标记
+        this.parsed = false;
+        // XPath解析器
+        this.xPathParser = xPathParser;
+        this.environment = environment;
+    }
+
+    public Configuration parse() {
+        if (parsed) {
+            throw new RuntimeException("每个XMLConfigBuilder构建者只能被创建一次");
+        }
+        parsed = true;
+
+        // 解析配置文件初始化Configuration
+        XNode xNode = xPathParser.evalNode("/configuration");
+        System.out.println(xNode.toString());
+
+        // 从根结点开始解析并构建Configuration对象
+        parseConfiguration(xNode);
+
+        return configuration;
+    }
+
+    /**
+     * 解析XNode，构建Configuration对象
+     *
+     * @param xNode
+     */
+    private void parseConfiguration(XNode xNode) {
+        try {
+            // 属性集设置，主要解析在配置文件中的<properties></properties>
+            // 属性集可以在标签中直接配置，也可以通过配置文件传入，例
+            /**
+             * <properties resource="org/mybatis/example/config.properties">
+             *   <property name="username" value="dev_user"/>
+             *   <property name="password" value="F2Fa3!33TYyg"/>
+             * </properties>
+             *
+             * SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(reader, props);
+             */
+            XNode properties = xNode.evalNode("properties");
+            propertiesElement(properties);
+        } catch (Exception e) {
+            throw new RuntimeException("设置全局配置文件Configuration时出错，原因： " + e, e);
+        }
+
+    }
+
+    /**
+     * 解析属性集配置
+     *
+     * @param properties
+     */
+    private void propertiesElement(XNode properties) throws Exception {
+        if (properties != null) {
+            // 处理在 properties 元素的子元素中设置
+            /**
+             * <properties resource="org/mybatis/example/config.properties">
+             *   <property name="username" value="dev_user"/>
+             *   <property name="password" value="F2Fa3!33TYyg"/>
+             * </properties>
+             */
+            Properties def = properties.getChildrenAsProperties();
+
+            String resource = properties.getStringAttribute("resource");
+            String url = properties.getStringAttribute("url");
+            if (resource != null && url != null) {
+                throw new RuntimeException("属性集配置不允许url和resource同时配置");
+            }
+            // 读取资源文件中的配置
+            if (resource != null) {
+                def.putAll(Resources.getResourceAsProperties(resource));
+            } else if (url != null) {
+                def.putAll(Resources.getResourceAsProperties(url));
+            }
+
+            // 将构造器时传入的properties在重新赋值一遍给def，否则会被覆盖
+            Properties vars = configuration.getVariables();
+            if (vars != null) {
+                def.putAll(vars);
+            }
+
+            // 设置更新XPath属性
+            xPathParser.setVariables(def);
+
+            // 构建全剧配置文件configuration的variables属性
+            configuration.setVariables(def);
+        }
+    }
+}
+```
+
+在属性集设置过程中用到了XNode的获取节点属性的方法
+
+```java
+public class XNode {
+
+    // XPath解析器对象
+    private final XPathParser xPathParser;
+
+    // Node节点对象
+    private final Node node;
+
+    // 属性集
+    private final Properties variables;
+
+    //  Node(配置文件)节点属性集
+    private final Properties attributes;
+
+    // 节点名称
+    private final String name;
+
+    private final String body;
+
+    public XNode(XPathParser xPathParser, Node node, Properties variables) {
+        //...
+    }
+
+    private String parseBody(Node node) {
+        //...
+    }
+
+    private String getBodyData(Node node) {
+        //...
+    }
+
+    /**
+     * 获取并创建Node节点属性集
+     *
+     * @param node
+     * @return
+     */
+    private Properties parseAttribute(Node node) {
+        //...
+    }
+
+    public XNode evalNode(String expression) {
+        //...
+    }
+
+    @Override
+    public String toString() {
+        //...
+    }
+
+    private void toString(StringBuilder builder, int level) {
+        //...
+    }
+
+    private void indent(StringBuilder builder, int level) {
+        //...
+    }
+
+    public List<XNode> getChildren() {
+        List<XNode> children = new ArrayList<>();
+        NodeList nodeList = node.getChildNodes();
+        if (nodeList != null) {
+            for (int i = 0, n = nodeList.getLength(); i < n; i++) {
+                Node node = nodeList.item(i);
+                if (node.getNodeType() == Node.ELEMENT_NODE) {
+                    children.add(new XNode(xPathParser, node, variables));
+                }
+            }
+        }
+        return children;
+    }
+
+    /**
+     * 获取子节点返回Properties
+     *
+     * @return
+     */
+    public Properties getChildrenAsProperties() {
+        Properties properties = new Properties();
+        // 获取子节点并通过name，value返回Properties
+        for (XNode child : getChildren()) {
+            String name = child.getStringAttribute("name");
+            String value = child.getStringAttribute("value");
+            if (name != null && value != null) {
+                properties.setProperty(name, value);
+            }
+        }
+        return properties;
+    }
+
+    public String getStringAttribute(String name) {
+        return getStringAttribute(name, (String) null);
+    }
+
+    public String getStringAttribute(String name, String def) {
+        String value = attributes.getProperty(name);
+        return value == null ? def : value;
+    }
+}
+```
+
+#### 属性设置
+
+属性设置主要是在XMLConfigBuilder的propertiesElement(XNode properties)方法中，具体完成了以下的操作：
+
+* 如果配置文件的<properties></properties>标签存在,则执行属性的配置流程
+* 首先判断Node节点properties中是否包含resource或者url属性，如果有则从配置的文件中获取属性集
+* 然后从ConfigBuilder的属性集参数variables中获取构建构造器XMLConfigBuilder时传入的属性集，这样避免属性遗失或者覆盖
+
+解析对应的位置是在：
+
+```xml
+
+<configuration>
+
+    <!-- 属性集配置 -->
+    <!-- 1.从配置文件config.properties中获取，2.直接通过属性property配置 -->
+    <properties resource="config.properties">
+        <property name="username" value="root"/>
+    </properties>
+</configuration>
+```
+
+如果想设置一些默认配置，结合拦截器PropertyParser一块使用可以进一步参考官方文档：
+
+[https://mybatis.org/mybatis-3/zh/configuration.html#properties](https://mybatis.org/mybatis-3/zh/configuration.html#properties)

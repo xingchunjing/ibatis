@@ -6,7 +6,8 @@
 <configuration>
 
     <!-- 属性集配置 -->
-    <properties resource="">
+    <!-- 1.从配置文件config.properties中获取，2.直接通过属性property配置 -->
+    <properties resource="config.properties">
         <property name="username" value="root"/>
     </properties>
 
@@ -18,7 +19,7 @@
                 <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
                 <property name="url" value="jdbc:mysql://127.0.0.1:3306/test_demo_0"/>
                 <property name="username" value="${username}"/>
-                <property name="password" value="100uu100UU"/>
+                <property name="password" value="${password}"/>
             </dataSource>
         </environment>
     </environments>
