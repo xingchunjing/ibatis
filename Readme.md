@@ -1251,3 +1251,116 @@ public class XNode {
 如果想设置一些默认配置，结合拦截器PropertyParser一块使用可以进一步参考官方文档：
 
 [https://mybatis.org/mybatis-3/zh/configuration.html#properties](https://mybatis.org/mybatis-3/zh/configuration.html#properties)
+
+### 20231114
+
+在属性集配置解析完成以后，在XMLConfigBuilder中接下来就是对"设置"的解析，在获取设置节点以后，
+
+* 首先对配置文件中的设置配置是否符合全句配置类的属性名称做校验
+
+* 校验过程是在settingsAsProperties方法中完成的，
+    * 该方法中通过MetaClass获取全局配置类Configuration的反射
+    * 对比配置文件中的设置与反射获取的属性参数做对比，如果符合规范则返回设置的Properties集
+    * 如果不符合规范则跑出错误
+
+* 校验过程中大量用到了反射相关知识，以及Class<?>的相关方法，具体实现是在Reflector类中完成的
+
+这里只展示一下XMLConfigBuilder的代码，MetaClass、Reflector、及其相关代码，参照代码code
+
+```java
+public class XMLConfigBuilder extends BaseBuilder {
+
+    private boolean parsed;
+
+    // XPath解析器
+    private final XPathParser xPathParser;
+
+    private String environment;
+
+    // 反射工厂
+    private ReflectionFactory localReflectorFactory = new DefaultReflectionFactory();
+
+    public XMLConfigBuilder(InputStream inputStream, String environment, Properties props) {
+        // XPathParser基于Java XPath解析器，用于解析Mybatis配置文件
+        this(new XPathParser(inputStream, true, props, new XMLMapperEntityResolver()), environment, props);
+    }
+
+    /**
+     * 构造器
+     *
+     * @param xPathParser
+     * @param environment
+     * @param props
+     */
+    private XMLConfigBuilder(XPathParser xPathParser, String environment, Properties props) {
+        //...
+    }
+
+    public Configuration parse() {
+        //...
+    }
+
+    /**
+     * 解析XNode，构建Configuration对象
+     *
+     * @param xNode
+     */
+    private void parseConfiguration(XNode xNode) {
+        try {
+            // 属性集设置，主要解析在配置文件中的<properties></properties>
+            // 属性集可以在标签中直接配置，也可以通过配置文件传入，例
+            /**
+             * <properties resource="org/mybatis/example/config.properties">
+             *   <property name="username" value="dev_user"/>
+             *   <property name="password" value="F2Fa3!33TYyg"/>
+             * </properties>
+             *
+             * SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(reader, props);
+             */
+            XNode properties = xNode.evalNode("properties");
+            propertiesElement(properties);
+
+            // 设置
+            Properties settings = settingsAsProperties(xNode.evalNode("settings"));
+        } catch (Exception e) {
+            throw new RuntimeException("设置全局配置文件Configuration时出错，原因： " + e, e);
+        }
+
+    }
+
+    /**
+     * 设置校验
+     *
+     * @param settings
+     * @return
+     */
+    private Properties settingsAsProperties(XNode settings) {
+        if (settings == null) {
+            return new Properties();
+        }
+        Properties props = settings.getChildrenAsProperties();
+
+        // XMLConfigBuilder在初始化的时候已经初始化了反射工厂，此时反射工厂中缓存为空，
+        // 在调用MetaClass.forClass时，会将入参Configuration的反射实体类创建并存放到反射工厂中
+        MetaClass metaClass = MetaClass.forClass(Configuration.class, localReflectorFactory);
+        // 校验属性设置是否合法，是否符合Configuration类的属性名称
+        for (Object key : props.keySet()) {
+            if (!metaClass.hasSetter(String.valueOf(key))) {
+                throw new RuntimeException("设置的" + key + "不合法。确保你正确拼写(区分大小写)。");
+            }
+        }
+
+        return props;
+
+    }
+
+    /**
+     * 解析属性集配置
+     *
+     * @param properties
+     */
+    private void propertiesElement(XNode properties) throws Exception {
+        //...
+    }
+}
+```

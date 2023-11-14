@@ -105,7 +105,7 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
 
     /**
-     * 设置
+     * 设置校验
      *
      * @param settings
      * @return
@@ -119,8 +119,14 @@ public class XMLConfigBuilder extends BaseBuilder {
         // XMLConfigBuilder在初始化的时候已经初始化了反射工厂，此时反射工厂中缓存为空，
         // 在调用MetaClass.forClass时，会将入参Configuration的反射实体类创建并存放到反射工厂中
         MetaClass metaClass = MetaClass.forClass(Configuration.class, localReflectorFactory);
+        // 校验属性设置是否合法，是否符合Configuration类的属性名称
+        for (Object key : props.keySet()) {
+            if (!metaClass.hasSetter(String.valueOf(key))) {
+                throw new RuntimeException("设置的" + key + "不合法。确保你正确拼写(区分大小写)。");
+            }
+        }
 
-        return null;
+        return props;
 
     }
 
