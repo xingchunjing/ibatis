@@ -45,4 +45,14 @@ public class Resources {
         }
         return properties;
     }
+
+    /**
+     * 通过全类名加载类
+     *
+     * @param clazz
+     * @return
+     */
+    public static Class<?> classForName(String clazz) throws ClassNotFoundException {
+        return classLoaderWrapper.classForName(clazz);
+    }
 }

@@ -2,6 +2,8 @@ package com.jingxc.ibatis.builder.xml;
 
 import com.jingxc.ibatis.builder.BaseBuilder;
 import com.jingxc.ibatis.io.Resources;
+import com.jingxc.ibatis.io.VFS;
+import com.jingxc.ibatis.logging.Log;
 import com.jingxc.ibatis.parsing.XNode;
 import com.jingxc.ibatis.parsing.XPathParser;
 import com.jingxc.ibatis.reflection.DefaultReflectionFactory;
@@ -98,10 +100,49 @@ public class XMLConfigBuilder extends BaseBuilder {
 
             // 设置
             Properties settings = settingsAsProperties(xNode.evalNode("settings"));
+            // 加载虚拟文件系统实现类
+            loadCustomVfs(settings);
+            // 加载日志系统实现类
+            loadCustomLogImpl(settings);
         } catch (Exception e) {
             throw new RuntimeException("设置全局配置文件Configuration时出错，原因： " + e, e);
         }
 
+    }
+
+    /**
+     * 加载日志系统实现类
+     *
+     * @param settings
+     */
+    private void loadCustomLogImpl(Properties settings) {
+        // 调用父类方法，通过别名返回实体类
+        Class<? extends Log> logImpl = resplveClass(settings.getProperty("logImpl"));
+        // 设置日志系统
+        configuration.setLogImpl(logImpl);
+    }
+
+    /**
+     * 加载虚拟文件系统实现类
+     *
+     * @param settings
+     * @throws ClassNotFoundException
+     */
+    private void loadCustomVfs(Properties settings) throws ClassNotFoundException {
+        // 获取设置里面自定义的虚拟文件系统实现
+        String value = settings.getProperty("vfsImpl");
+        if (value != null) {
+            // 多个配置之间以逗号隔开
+            String[] clazzes = value.split(",");
+            for (String clazz : clazzes) {
+                if (!clazz.isEmpty()) {
+                    // 通过全类名加载虚拟文件系统的实现类，该类继承VFS父类
+                    Class<? extends VFS> vfsImpl = (Class<? extends VFS>) Resources.classForName(clazz);
+                    // 设置全句配置
+                    configuration.setVfsImpl(vfsImpl);
+                }
+            }
+        }
     }
 
     /**

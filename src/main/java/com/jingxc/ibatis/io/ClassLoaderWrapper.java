@@ -71,4 +71,22 @@ public class ClassLoaderWrapper {
                 systemClassLoader
         };
     }
+
+    public Class<?> classForName(String name) throws ClassNotFoundException {
+        return classForName(name, getClassLoaders(null));
+    }
+
+    Class<?> classForName(String name, ClassLoader[] classLoaders) throws ClassNotFoundException {
+        for (ClassLoader cl : classLoaders) {
+            if (null != cl) {
+                try {
+                    return Class.forName(name, true, cl);
+                } catch (ClassNotFoundException e) {
+                    // 下面自己跑出异常
+                }
+
+            }
+        }
+        throw new ClassNotFoundException("Cannot find class: " + name);
+    }
 }
