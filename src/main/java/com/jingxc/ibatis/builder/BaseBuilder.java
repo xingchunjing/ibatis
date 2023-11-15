@@ -15,7 +15,7 @@ public abstract class BaseBuilder {
     }
 
     /**
-     * // 通过别名放回对应的实体类
+     * 通过别名放回对应的实体类
      *
      * @param alias
      * @param <T>

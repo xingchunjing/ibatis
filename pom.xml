@@ -20,17 +20,39 @@
             <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.30</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.30</version>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>
         <resources>
             <resource>
-                <directory>src/main/java</directory>
+                <!-- 扫描src/main/java包下的xml格式限定文件 -->
+                <directory>${project.build.sourceDirectory}</directory>
                 <includes>
                     <include>**/*.dtd</include>
                 </includes>
             </resource>
         </resources>
+        <testResources>
+            <testResource>
+                <!-- 扫描src/test/java包下的properties配置文件 -->
+                <directory>${project.build.testSourceDirectory}</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </testResource>
+        </testResources>
     </build>
 
 </project>

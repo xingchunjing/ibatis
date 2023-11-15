@@ -12,7 +12,12 @@
     </properties>
 
     <settings>
+        <!-- 设置全句缓存配置 -->
         <setting name="cacheEnabled" value="true"/>
+        <!-- 设置虚拟文件路径对应关系配置类 -->
+        <setting name="vfsImpl" value="com.jingxc.ibatis.io.TestVfsImpl"/>
+        <!-- 设置日志系统配置类，可以使用别名，也可以自定义 -->
+        <setting name="logImpl" value="SLF4J"/>
     </settings>
 
     <!-- 数据源配置 -->

@@ -84,7 +84,6 @@ public class ClassLoaderWrapper {
                 } catch (ClassNotFoundException e) {
                     // 下面自己跑出异常
                 }
-
             }
         }
         throw new ClassNotFoundException("Cannot find class: " + name);

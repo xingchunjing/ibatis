@@ -74,17 +74,6 @@ public class TypeAliasRegistry {
         registerAlias("ResultSet", ResultSet.class);
     }
 
-    private void registerAlias(String alias, Class<?> value) {
-        if (alias == null) {
-            throw new RuntimeException("The parameter alias cannot be null");
-        }
-        String key = alias.toLowerCase(Locale.ENGLISH);
-        if (typeAliases.containsKey(key) && typeAliases.get(key) != null && typeAliases.get(key).equals(value)) {
-            throw new RuntimeException("The alias '" + alias + "' is already mapped to the value '" + typeAliases.get(key).getName() + "'.");
-        }
-        typeAliases.put(key, value);
-    }
-
     public <T> Class<? extends T> resolveAlias(String alias) {
         try {
             // 如果别名为null，则返回null
@@ -105,5 +94,27 @@ public class TypeAliasRegistry {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Could not resolve type alias '" + alias + "'.  Cause: " + e, e);
         }
+    }
+
+    public void resolveAlias(String alias, Class<?> clazz) {
+        if (alias == null) {
+            throw new RuntimeException("别名参数不能为空");
+        }
+        String key = alias.toLowerCase(Locale.ENGLISH);
+        if (typeAliases.containsKey(key) && typeAliases.get(key) != null && !typeAliases.get(key).equals(clazz)) {
+            throw new RuntimeException("The alias '" + alias + "' is already mapped to the value '" + typeAliases.get(key).getName() + "'.");
+        }
+        typeAliases.put(key, clazz);
+    }
+
+    public void registerAlias(String alias, Class<?> value) {
+        if (alias == null) {
+            throw new RuntimeException("The parameter alias cannot be null");
+        }
+        String key = alias.toLowerCase(Locale.ENGLISH);
+        if (typeAliases.containsKey(key) && typeAliases.get(key) != null && typeAliases.get(key).equals(value)) {
+            throw new RuntimeException("The alias '" + alias + "' is already mapped to the value '" + typeAliases.get(key).getName() + "'.");
+        }
+        typeAliases.put(key, value);
     }
 }

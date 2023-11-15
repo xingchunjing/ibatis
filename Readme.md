@@ -1364,3 +1364,445 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
 }
 ```
+
+### 20231115
+
+设置配置检验完成，接下来就对基本设置想进行解析，主要解析步骤在XMLConfigBuilder的parseConfiguration方法中完成
+
+今天主要将其中两个设置的解析和初始化
+
+1. 虚拟文件路径对应关系配置VFS
+2. 日志系统配置LOG
+
+#### 加载虚拟文件系统实现类
+
+具体实现方法为： loadCustomVfs(settings);
+
+* 具体实现为读取配置文件中的设置项，然后通过全路径加载类文件然后初始化到全局配置类Configuration中、
+* 所配置的类路径要继承mybatis提供的虚拟基类VFS，VFS中也默认提供了两种实现，
+* 这里是自己一步一步写代码，会在后续用到的时候逐渐补充完成类方法，该处只提供不报错能运行类结构
+
+```java
+public class XMLConfigBuilder extends BaseBuilder {
+
+    //....
+
+    /**
+     * 加载虚拟文件系统实现类
+     *
+     * @param settings
+     * @throws ClassNotFoundException
+     */
+    private void loadCustomVfs(Properties settings) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+        // 获取设置里面自定义的虚拟文件系统实现
+        String value = settings.getProperty("vfsImpl");
+        if (value != null) {
+            // 多个配置之间以逗号隔开
+            String[] clazzes = value.split(",");
+            for (String clazz : clazzes) {
+                if (!clazz.isEmpty()) {
+                    // 通过全类名加载虚拟文件系统的实现类，该类继承VFS父类
+                    Class<? extends VFS> vfsImpl = (Class<? extends VFS>) Resources.classForName(clazz);
+                    // 测试是否读取成功
+                    vfsImpl.newInstance().toString();
+                    // 设置全句配置
+                    configuration.setVfsImpl(vfsImpl);
+                }
+            }
+        }
+    }
+}
+```
+
+##### VFS基类
+
+```java
+public abstract class VFS {
+
+    /**
+     * 存储配置文件配置的虚拟文件系统实现类
+     */
+    public static final List<Class<? extends VFS>> USER_IMPLEMENTATIONS = new ArrayList<>();
+
+    /**
+     * 添加实现
+     *
+     * @param vfsImpl
+     */
+    public static void addImplClass(Class<? extends VFS> vfsImpl) {
+        if (vfsImpl != null) {
+            USER_IMPLEMENTATIONS.add(vfsImpl);
+        }
+    }
+}
+```
+
+##### 配置文件
+
+在配置文件中新增配置：`<setting name="vfsImpl" value="com.jingxc.ibatis.io.TestVfsImpl"/>`
+
+```java
+public class TestVfsImpl extends VFS {
+
+    @Override
+    public String toString() {
+        System.out.println("初始化VFS测试完成");
+        return "sucess";
+    }
+}
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd"
+        >
+<configuration>
+
+    <!-- 属性集配置 -->
+    <!-- 1.从配置文件config.properties中获取，2.直接通过属性property配置 -->
+    <properties resource="config.properties">
+        <property name="username" value="root"/>
+    </properties>
+
+    <settings>
+        <!-- 设置全句缓存配置 -->
+        <setting name="cacheEnabled" value="true"/>
+        <!-- 设置虚拟文件路径对应关系配置类 -->
+        <setting name="vfsImpl" value="com.jingxc.ibatis.io.TestVfsImpl"/>
+        <!-- 设置日志系统配置类，可以使用别名，也可以自定义 -->
+        <setting name="logImpl" value="SLF4J"/>
+    </settings>
+
+    <!-- 数据源配置 -->
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"></transactionManager>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://127.0.0.1:3306/test_demo_0"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <!-- 引入配置文件 -->
+    <mappers>
+        <mapper resource="mapper/UserMapper.xml"></mapper>
+    </mappers>
+
+</configuration>
+
+```
+
+这样就完成了简单的VFS配置与解析
+
+#### 加载日志系统实现类
+
+具体实现方法为： `loadCustomLogImpl(settings);`
+
+```java
+public class XMLConfigBuilder extends BaseBuilder {
+    //....
+
+    /**
+     * 加载日志系统实现类
+     *
+     * @param settings
+     */
+    private void loadCustomLogImpl(Properties settings) {
+        // 调用父类方法，通过别名返回实体类
+        Class<? extends Log> logImpl = resplveClass(settings.getProperty("logImpl"));
+        // 设置日志系统
+        configuration.setLogImpl(logImpl);
+    }
+}
+```
+
+这里用到了父类BaseBuilder的resplveClass方法
+
+这个方法提供了类型别名的转化获取功能，通过内部属性类`protected final TypeAliasRegistry typeAliasRegistry;`将类型别名转化为具体的类
+
+```java
+public abstract class BaseBuilder {
+
+    protected final Configuration configuration;
+
+    protected final TypeAliasRegistry typeAliasRegistry;
+
+    public BaseBuilder(Configuration configuration) {
+        this.configuration = configuration;
+        this.typeAliasRegistry = this.configuration.getTypeAliasRegistry();
+    }
+
+    /**
+     * // 通过别名放回对应的实体类
+     *
+     * @param alias
+     * @param <T>
+     * @return
+     */
+    protected <T> Class<? extends T> resplveClass(String alias) {
+        if (alias == null) {
+            return null;
+        }
+        try {
+            return resolveAlias(alias);
+        } catch (Exception e) {
+            throw new RuntimeException("解析类出错。原因： " + e, e);
+        }
+    }
+
+    protected <T> Class<? extends T> resolveAlias(String alias) {
+        // 通过别名放回对应的实体类
+        return typeAliasRegistry.resolveAlias(alias);
+    }
+
+}
+```
+
+```java
+public class TypeAliasRegistry {
+
+    // 别名类型map集
+    private final Map<String, Class<?>> typeAliases = new HashMap<>();
+
+    public TypeAliasRegistry() {
+        // 构造器直接初始化别名类型集合
+        registerAlias("string", String.class);
+
+        registerAlias("byte", Byte.class);
+        registerAlias("long", Long.class);
+        registerAlias("short", Short.class);
+        registerAlias("int", Integer.class);
+        registerAlias("integer", Integer.class);
+        registerAlias("double", Double.class);
+        registerAlias("float", Float.class);
+        registerAlias("boolean", Boolean.class);
+
+        registerAlias("byte[]", Byte[].class);
+        registerAlias("long[]", Long[].class);
+        registerAlias("short[]", Short[].class);
+        registerAlias("int[]", Integer[].class);
+        registerAlias("integer[]", Integer[].class);
+        registerAlias("double[]", Double[].class);
+        registerAlias("float[]", Float[].class);
+        registerAlias("boolean[]", Boolean[].class);
+
+        registerAlias("_byte", byte.class);
+        registerAlias("_long", long.class);
+        registerAlias("_short", short.class);
+        registerAlias("_int", int.class);
+        registerAlias("_integer", int.class);
+        registerAlias("_double", double.class);
+        registerAlias("_float", float.class);
+        registerAlias("_boolean", boolean.class);
+
+        registerAlias("_byte[]", byte[].class);
+        registerAlias("_long[]", long[].class);
+        registerAlias("_short[]", short[].class);
+        registerAlias("_int[]", int[].class);
+        registerAlias("_integer[]", int[].class);
+        registerAlias("_double[]", double[].class);
+        registerAlias("_float[]", float[].class);
+        registerAlias("_boolean[]", boolean[].class);
+
+        registerAlias("date", Date.class);
+        registerAlias("decimal", BigDecimal.class);
+        registerAlias("bigdecimal", BigDecimal.class);
+        registerAlias("biginteger", BigInteger.class);
+        registerAlias("object", Object.class);
+
+        registerAlias("date[]", Date[].class);
+        registerAlias("decimal[]", BigDecimal[].class);
+        registerAlias("bigdecimal[]", BigDecimal[].class);
+        registerAlias("biginteger[]", BigInteger[].class);
+        registerAlias("object[]", Object[].class);
+
+        registerAlias("map", Map.class);
+        registerAlias("hashmap", HashMap.class);
+        registerAlias("list", List.class);
+        registerAlias("arraylist", ArrayList.class);
+        registerAlias("collection", Collection.class);
+        registerAlias("iterator", Iterator.class);
+
+        registerAlias("ResultSet", ResultSet.class);
+    }
+
+    public <T> Class<? extends T> resolveAlias(String alias) {
+        try {
+            // 如果别名为null，则返回null
+            if (alias == null) {
+                return null;
+            }
+            // 转为小写字符
+            String key = alias.toLowerCase(Locale.ENGLISH);
+            Class<T> value;
+            // 如果别名中包含该对应则直接返回该类型
+            if (typeAliases.containsKey(key)) {
+                value = (Class<T>) typeAliases.get(key);
+            } else {
+                // 如果不包含直接使用类加载器加载实体类
+                value = (Class<T>) Resources.classForName(alias);
+            }
+            return value;
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Could not resolve type alias '" + alias + "'.  Cause: " + e, e);
+        }
+    }
+
+    public void resolveAlias(String alias, Class<?> clazz) {
+        if (alias == null) {
+            throw new RuntimeException("别名参数不能为空");
+        }
+        String key = alias.toLowerCase(Locale.ENGLISH);
+        if (typeAliases.containsKey(key) && typeAliases.get(key) != null && !typeAliases.get(key).equals(clazz)) {
+            throw new RuntimeException("The alias '" + alias + "' is already mapped to the value '" + typeAliases.get(key).getName() + "'.");
+        }
+        typeAliases.put(key, clazz);
+    }
+
+    public void registerAlias(String alias, Class<?> value) {
+        if (alias == null) {
+            throw new RuntimeException("The parameter alias cannot be null");
+        }
+        String key = alias.toLowerCase(Locale.ENGLISH);
+        if (typeAliases.containsKey(key) && typeAliases.get(key) != null && typeAliases.get(key).equals(value)) {
+            throw new RuntimeException("The alias '" + alias + "' is already mapped to the value '" + typeAliases.get(key).getName() + "'.");
+        }
+        typeAliases.put(key, value);
+    }
+}
+```
+
+具体的执行流程是：
+
+1. 在XMLConfigBuilder的构造器中调用了父类构造器`super(new Configuration());`
+    * 这里使用无参构造器初始化全局配置类Configuration，构造器中完成了别名类TypeAliasRegistry的设置
+
+```java
+public class Configuration {
+    protected final TypeAliasRegistry typeAliasRegistry = new TypeAliasRegistry();
+
+    public Configuration() {
+        // 注册日志类别名
+        typeAliasRegistry.resolveAlias("SLF4J", Slf4jImpl.class);
+        // typeAliasRegistry.registerAlias("COMMONS_LOGGING", JakartaCommonsLoggingImpl.class);
+        // typeAliasRegistry.registerAlias("LOG4J", Log4jImpl.class);
+        // typeAliasRegistry.registerAlias("LOG4J2", Log4j2Impl.class);
+        // typeAliasRegistry.registerAlias("JDK_LOGGING", Jdk14LoggingImpl.class);
+        // typeAliasRegistry.registerAlias("STDOUT_LOGGING", StdOutImpl.class);
+        // typeAliasRegistry.registerAlias("NO_LOGGING", NoLoggingImpl.class);
+
+    }
+}   
+```
+
+2. 上面完成了别名类TypeAliasRegistry的初始化，在父类BaseBuilder中进一步进行设置
+
+```java
+public abstract class BaseBuilder {
+
+    protected final Configuration configuration;
+
+    protected final TypeAliasRegistry typeAliasRegistry;
+
+    public BaseBuilder(Configuration configuration) {
+        this.configuration = configuration;
+        this.typeAliasRegistry = this.configuration.getTypeAliasRegistry();
+    }
+
+    /**
+     * 通过别名放回对应的实体类
+     *
+     * @param alias
+     * @param <T>
+     * @return
+     */
+    protected <T> Class<? extends T> resplveClass(String alias) {
+        if (alias == null) {
+            return null;
+        }
+        try {
+            return resolveAlias(alias);
+        } catch (Exception e) {
+            throw new RuntimeException("解析类出错。原因： " + e, e);
+        }
+    }
+
+    protected <T> Class<? extends T> resolveAlias(String alias) {
+        // 通过别名放回对应的实体类
+        return typeAliasRegistry.resolveAlias(alias);
+    }
+}
+```
+
+3. 这样XMLConfigBuilder就拥有了别名类TypeAliasRegistry属性，并且可以调用父类BaseBuilder的别名转换方法了
+4. 在日志系统初始化时候直接调用`resplveClass(String alias)`将配置参数`<setting name="logImpl" value="SLF4J"/>`转化为要使用的日志类
+
+##### 特别说明
+
+这里用到了log4j的配置文件，和SLF4J依赖，所以需要添加maven配置和properties配置
+
+```xml
+
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-api</artifactId>
+    <version>1.7.30</version>
+</dependency>
+```
+
+```xml
+
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-log4j12</artifactId>
+    <version>1.7.30</version>
+    <optional>true</optional>
+</dependency>
+```
+
+log4j.properties放在了`src/test/java`目录下,要使测试的时候能够扫描到该文件，需要增加maven配置
+
+```xml
+
+<build>
+    <resources>
+        <resource>
+            <!-- 扫描src/main/java包下的xml格式限定文件 -->
+            <directory>${project.build.sourceDirectory}</directory>
+            <includes>
+                <include>**/*.dtd</include>
+            </includes>
+        </resource>
+    </resources>
+    <testResources>
+        <testResource>
+            <!-- 扫描src/test/java包下的properties配置文件 -->
+            <directory>${project.build.testSourceDirectory}</directory>
+            <includes>
+                <include>**/*.properties</include>
+            </includes>
+        </testResource>
+    </testResources>
+</build>
+```
+
+为了可以实时测试效果，调整日志级别为DEBUG
+
+```properties
+log4j.rootLogger=DEBUG, stdout
+### Uncomment for MyBatis logging
+# log4j.logger.org.apache.ibatis=ERROR
+# log4j.logger.org.apache.ibatis.session.AutoMappingUnknownColumnBehavior=WARN, lastEventSavedAppender
+### Console output...
+log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+log4j.appender.stdout.layout.ConversionPattern=%5p [%t] - %m%n
+log4j.appender.lastEventSavedAppender=org.apache.ibatis.session.AutoMappingUnknownColumnBehaviorTest$LastEventSavedAppender
+```
+
+这样就完成了日志系统的配置

@@ -128,7 +128,7 @@ public class XMLConfigBuilder extends BaseBuilder {
      * @param settings
      * @throws ClassNotFoundException
      */
-    private void loadCustomVfs(Properties settings) throws ClassNotFoundException {
+    private void loadCustomVfs(Properties settings) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
         // 获取设置里面自定义的虚拟文件系统实现
         String value = settings.getProperty("vfsImpl");
         if (value != null) {
@@ -138,6 +138,8 @@ public class XMLConfigBuilder extends BaseBuilder {
                 if (!clazz.isEmpty()) {
                     // 通过全类名加载虚拟文件系统的实现类，该类继承VFS父类
                     Class<? extends VFS> vfsImpl = (Class<? extends VFS>) Resources.classForName(clazz);
+                    // 测试是否读取成功
+                    vfsImpl.newInstance().toString();
                     // 设置全句配置
                     configuration.setVfsImpl(vfsImpl);
                 }

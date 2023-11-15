@@ -5,6 +5,8 @@ import java.util.List;
 
 /**
  * 虚拟文件系统类
+ * 通过内部类完成虚拟文件路径对应关系的创建，单例
+ * 主要实现部分在静态内部类VFSHolder
  */
 public abstract class VFS {
 
