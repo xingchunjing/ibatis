@@ -20,4 +20,14 @@ public class Slf4jLoggerImpl implements Log {
     public void debug(String s) {
         log.debug(s);
     }
+
+    @Override
+    public void error(String s) {
+        log.error(s);
+    }
+
+    @Override
+    public void error(String s, Throwable e) {
+        log.error(s, e);
+    }
 }

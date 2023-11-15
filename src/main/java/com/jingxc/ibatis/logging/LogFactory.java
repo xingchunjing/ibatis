@@ -35,4 +35,16 @@ public class LogFactory {
             throw new RuntimeException("设置日志系统出错.  原因: " + e, e);
         }
     }
+
+    public static Log getLog(Class<?> clazz) {
+        return getLog(clazz.getName());
+    }
+
+    public static Log getLog(String logger) {
+        try {
+            return logConstructor.newInstance(logger);
+        } catch (Throwable t) {
+            throw new RuntimeException("创建logger出错 " + logger + ".  原因: " + t, t);
+        }
+    }
 }

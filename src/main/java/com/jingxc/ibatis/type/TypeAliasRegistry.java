@@ -1,5 +1,6 @@
 package com.jingxc.ibatis.type;
 
+import com.jingxc.ibatis.io.ResolverUtil;
 import com.jingxc.ibatis.io.Resources;
 
 import java.math.BigDecimal;
@@ -107,6 +108,12 @@ public class TypeAliasRegistry {
         typeAliases.put(key, clazz);
     }
 
+    /**
+     * 通过class配置别名
+     *
+     * @param alias
+     * @param value
+     */
     public void registerAlias(String alias, Class<?> value) {
         if (alias == null) {
             throw new RuntimeException("The parameter alias cannot be null");
@@ -116,5 +123,20 @@ public class TypeAliasRegistry {
             throw new RuntimeException("The alias '" + alias + "' is already mapped to the value '" + typeAliases.get(key).getName() + "'.");
         }
         typeAliases.put(key, value);
+    }
+
+    /**
+     * 通过包名配置别名
+     *
+     * @param typeAliasPackage
+     */
+    public void registerAliases(String typeAliasPackage) {
+        registerAliases(typeAliasPackage, Object.class);
+    }
+
+    public void registerAliases(String packageName, Class<?> superType) {
+        ResolverUtil<Class<?>> resolverUtil = new ResolverUtil<>();
+        ResolverUtil.IsA isA = new ResolverUtil.IsA(superType);
+        resolverUtil.find(isA, packageName);
     }
 }

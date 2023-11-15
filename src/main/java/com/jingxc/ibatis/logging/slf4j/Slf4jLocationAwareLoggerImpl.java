@@ -26,4 +26,14 @@ public class Slf4jLocationAwareLoggerImpl implements Log {
     public void debug(String s) {
         logger.log(MARKER, FQCN, LocationAwareLogger.DEBUG_INT, s, null, null);
     }
+
+    @Override
+    public void error(String s) {
+        logger.error(s);
+    }
+
+    @Override
+    public void error(String s, Throwable e) {
+        logger.error(s, e);
+    }
 }

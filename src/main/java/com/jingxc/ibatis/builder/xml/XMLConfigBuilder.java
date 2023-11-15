@@ -104,10 +104,34 @@ public class XMLConfigBuilder extends BaseBuilder {
             loadCustomVfs(settings);
             // 加载日志系统实现类
             loadCustomLogImpl(settings);
+            // 类型别名解析设置
+            typeAliasesElement(xNode.evalNode("typeAliases"));
         } catch (Exception e) {
             throw new RuntimeException("设置全局配置文件Configuration时出错，原因： " + e, e);
         }
 
+    }
+
+    /**
+     * 类型别名解析配置
+     *
+     * @param typeAliases
+     */
+    private void typeAliasesElement(XNode typeAliases) {
+        if (typeAliases != null) {
+            // 获取所有子节点
+            for (XNode child : typeAliases.getChildren()) {
+                if ("package".equals(child.getName())) {
+                    /**
+                     * <typeAliases>
+                     *   <package name="domain.blog"/>
+                     * </typeAliases>
+                     */
+                    String typeAliasPackage = child.getStringAttribute("name");
+                    configuration.getTypeAliasRegistry().registerAliases(typeAliasPackage);
+                }
+            }
+        }
     }
 
     /**

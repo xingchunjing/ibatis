@@ -41,4 +41,14 @@ public class Slf4jImpl implements Log {
     public void debug(String s) {
         log.debug(s);
     }
+
+    @Override
+    public void error(String s) {
+        log.error(s);
+    }
+
+    @Override
+    public void error(String s, Throwable e) {
+        log.error(s, e);
+    }
 }
