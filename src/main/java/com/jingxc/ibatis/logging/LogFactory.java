@@ -1,5 +1,7 @@
 package com.jingxc.ibatis.logging;
 
+import com.jingxc.ibatis.logging.slf4j.Slf4jImpl;
+
 import java.lang.reflect.Constructor;
 
 public class LogFactory {
@@ -7,6 +9,31 @@ public class LogFactory {
     public static final String MARKER = "MYBATIS";
 
     private static Constructor<? extends Log> logConstructor;
+
+    // 构造器私有化
+    private LogFactory() {
+        // disable construction
+    }
+
+    // 静态方法，引入日志系统
+    static {
+        tryImplementation(LogFactory::useSlf4jLogging);
+    }
+
+    // 初始化日志系统，执行useSlf4jLoggin该方法
+    private static void tryImplementation(Runnable runnable) {
+        if (logConstructor == null) {
+            try {
+                runnable.run();
+            } catch (Throwable t) {
+                // ignore
+            }
+        }
+    }
+
+    public static synchronized void useSlf4jLogging() {
+        setImplementation(Slf4jImpl.class);
+    }
 
     /**
      * 设置客户端配置的日志系统

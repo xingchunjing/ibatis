@@ -20,6 +20,10 @@
         <setting name="logImpl" value="SLF4J"/>
     </settings>
 
+    <typeAliases>
+        <typeAlias type="Users" alias="com.jingxc.ibatis.typeAliase.Users"></typeAlias>
+    </typeAliases>
+
     <!-- 数据源配置 -->
     <environments default="development">
         <environment id="development">
