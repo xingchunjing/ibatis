@@ -130,7 +130,6 @@ public class XMLConfigBuilder extends BaseBuilder {
                      */
                     String typeAliasPackage = child.getStringAttribute("name");
                     configuration.getTypeAliasRegistry().registerAliases(typeAliasPackage);
-                    System.out.println(1111);
                 } else {
                     String alias = child.getStringAttribute("alias");
                     String type = child.getStringAttribute("type");

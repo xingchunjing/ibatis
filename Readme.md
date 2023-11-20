@@ -1890,3 +1890,174 @@ public class LogFactory {
     }
 }
 ```
+
+#### 20231120
+
+##### 类型别名
+
+除了在全局配置类Configuration中设置的默认别名，还可以通过配置文件增加自己的别名设置
+
+别名设置有两种方式：
+
+1. 通过类路径直接设置别名
+2. 通过类路径包设置别名
+
+别名设置主要是在XMLConfigBuilder的typeAliasesElement方法中完成
+
+```java
+public class XMLConfigBuilder extends BaseBuilder {
+
+    // ...
+
+    /**
+     * 类型别名解析配置
+     *
+     * @param typeAliases
+     */
+    private void typeAliasesElement(XNode typeAliases) {
+        if (typeAliases != null) {
+            // 获取所有子节点
+            for (XNode child : typeAliases.getChildren()) {
+                if ("package".equals(child.getName())) {
+                    /**
+                     * <typeAliases>
+                     *     <package name="com.jingxc.ibatis.typeAliase"/>
+                     *     <!--        <typeAlias type="com.jingxc.ibatistis.typeAliase.Users" alias="Users"></typeAlias>-->
+                     * </typeAliases>
+                     */
+                    String typeAliasPackage = child.getStringAttribute("name");
+                    configuration.getTypeAliasRegistry().registerAliases(typeAliasPackage);
+                } else {
+                    String alias = child.getStringAttribute("alias");
+                    String type = child.getStringAttribute("type");
+                    try {
+                        Class<?> clazz = Resources.classForName(type);
+                        if (alias == null) {
+                            typeAliasRegistry.registerAliases(clazz);
+                        } else {
+                            typeAliasRegistry.registerAlias(alias, clazz);
+                        }
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException("注册别名 '" + alias + "'出错. 原因: " + e, e);
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+##### 类路径别名设置
+
+通过类路径别名设置需要在配置文件中配置下面参数
+
+```xml
+
+<typeAliases>
+    <!--        <package name="com.jingxc.ibatis.typeAliase"/>-->
+    <typeAlias type="com.jingxc.ibatis.typeAliase.Users" alias="Users"></typeAlias>
+</typeAliases>
+```
+
+* type:表示类路径
+* alias:表示想要转换的别名
+
+通过类路径别名设置比较简单，直接对父类BaseBuilder的属性typeAliasRegistry，赋值即可
+
+##### 包路径别名设置
+
+通过包路径设置别名，需要结合VFS使用，在注册别名时需要创建ResolverUtil工具类，在工具类的find方法会创建VFS读取包路径下的实体类
+
+```java
+public class ResolverUtil<T> {
+
+    private static final Log log = LogFactory.getLog(ResolverUtil.class);
+
+    private ClassLoader classloader;
+
+    // 匹配获取实体类型
+    private Set<Class<? extends T>> matches = new HashSet<>();
+
+    public ResolverUtil<T> find(Test test, String packageName) {
+
+        // 转换java类路径为文件路径
+        String path = getPackagePath(packageName);
+        try {
+            // 初始化并获取包路径下类路径
+            List<String> children = VFS.getInstance().list(path);
+            for (String child : children) {
+                addIfMatching(test, child);
+            }
+        } catch (IOException e) {
+            log.error("读取包目录出错: " + packageName, e);
+        }
+        return this;
+    }
+
+    private void addIfMatching(Test test, String fqn) {
+        try {
+            // 将.class去掉，获取实际的类路径
+            String externalName = fqn.substring(0, fqn.indexOf('.')).replace('/', '.');
+            // 获取类加载器
+            ClassLoader classLoader = getClassLoader();
+            if (log.isDebugEnabled()) {
+                log.debug("检查 " + externalName + " 是否匹配 [" + test + "]");
+            }
+
+            Class<?> type = classLoader.loadClass(externalName);
+            if (test.matchs(type)) {
+                matches.add((Class<T>) type);
+            }
+        } catch (Throwable t) {
+            log.error("匹配检查失败 '" + fqn + "'" + " 由于 "
+                    + t.getClass().getName() + " 原因: " + t.getMessage());
+        }
+    }
+
+    /**
+     * 获取返回实体类型集
+     *
+     * @return
+     */
+    public Set<Class<? extends T>> getClasses() {
+        return matches;
+    }
+
+    public ClassLoader getClassLoader() {
+        return classloader == null ? Thread.currentThread().getContextClassLoader() : classloader;
+    }
+
+    /**
+     * 转换java类路径为文件路径
+     *
+     * @param packageName
+     * @return
+     */
+    private String getPackagePath(String packageName) {
+        return packageName == null ? null : packageName.replace('.', '/');
+    }
+
+    public interface Test {
+        boolean matchs(Class<?> type);
+    }
+
+    public static class IsA implements Test {
+
+        private Class<?> parent;
+
+        public IsA(Class<?> parent) {
+            this.parent = parent;
+        }
+
+        @Override
+        public boolean matchs(Class<?> type) {
+            return type != null && parent.isAssignableFrom(type);
+        }
+    }
+
+}
+```
+
+主要的方法是在`List<String> children = VFS.getInstance().list(path);`中
+
+getInstance()方法创建了一个内部类VFSHolder，内部类属性INSTANCE初始化了VFS，并将之前设置中的VFS和默认的VFS进行初始化

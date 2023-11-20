@@ -21,8 +21,8 @@
     </settings>
 
     <typeAliases>
-        <package name="com.jingxc.ibatis.typeAliase"/>
-        <!--        <typeAlias type="com.jingxc.ibatistis.typeAliase.Users" alias="Users"></typeAlias>-->
+        <!--        <package name="com.jingxc.ibatis.typeAliase"/>-->
+        <typeAlias type="com.jingxc.ibatis.typeAliase.Users" alias="Users"></typeAlias>
     </typeAliases>
 
     <!-- 数据源配置 -->

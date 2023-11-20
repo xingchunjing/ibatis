@@ -22,6 +22,7 @@ public class ResolverUtil<T> {
         // 转换java类路径为文件路径
         String path = getPackagePath(packageName);
         try {
+            // 初始化并获取包路径下类路径
             List<String> children = VFS.getInstance().list(path);
             for (String child : children) {
                 addIfMatching(test, child);
