@@ -138,5 +138,22 @@ public class TypeAliasRegistry {
         ResolverUtil<Class<?>> resolverUtil = new ResolverUtil<>();
         ResolverUtil.IsA isA = new ResolverUtil.IsA(superType);
         resolverUtil.find(isA, packageName);
+        Set<Class<? extends Class<?>>> classes = resolverUtil.getClasses();
+        for (Class<?> type : classes) {
+            if (!type.isAnonymousClass() && !type.isInterface() && !type.isMemberClass()) {
+                registerAliases(type);
+            }
+        }
+    }
+
+    public void registerAliases(Class<?> type) {
+        // 默认别名
+        String alias = type.getSimpleName();
+        // 获取实体类上别名
+        Alias typeAnnotation = type.getAnnotation(Alias.class);
+        if (typeAnnotation != null) {
+            alias = typeAnnotation.value();
+        }
+        registerAlias(alias, type);
     }
 }

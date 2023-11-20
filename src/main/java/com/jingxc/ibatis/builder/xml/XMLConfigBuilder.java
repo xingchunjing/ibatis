@@ -124,11 +124,26 @@ public class XMLConfigBuilder extends BaseBuilder {
                 if ("package".equals(child.getName())) {
                     /**
                      * <typeAliases>
-                     *   <package name="domain.blog"/>
+                     *     <package name="com.jingxc.ibatis.typeAliase"/>
+                     *     <!--        <typeAlias type="com.jingxc.ibatistis.typeAliase.Users" alias="Users"></typeAlias>-->
                      * </typeAliases>
                      */
                     String typeAliasPackage = child.getStringAttribute("name");
                     configuration.getTypeAliasRegistry().registerAliases(typeAliasPackage);
+                    System.out.println(1111);
+                } else {
+                    String alias = child.getStringAttribute("alias");
+                    String type = child.getStringAttribute("type");
+                    try {
+                        Class<?> clazz = Resources.classForName(type);
+                        if (alias == null) {
+                            typeAliasRegistry.registerAliases(clazz);
+                        } else {
+                            typeAliasRegistry.registerAlias(alias, clazz);
+                        }
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException("注册别名 '" + alias + "'出错. 原因: " + e, e);
+                    }
                 }
             }
         }

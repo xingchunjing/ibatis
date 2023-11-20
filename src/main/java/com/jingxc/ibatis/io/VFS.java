@@ -72,7 +72,12 @@ public abstract class VFS {
 
     public List<String> list(String path) throws IOException {
         List<String> names = new ArrayList<>();
-        for (URL url : getResources(path)) {
+        // 获取文件的实际物理目录地址
+        List<URL> resources = getResources(path);
+        for (URL url : resources) {
+            // list()将文件实际物理地址转化为spring的java类路径地址，并获取包下类
+            // file:/Users/jingxc/service/sts-project/ibatis/target/classes/com/jingxc/ibatis/type/test
+            // com/jingxc/ibatis/type/test/Users.class
             names.addAll(list(url, path));
         }
         return names;
@@ -95,9 +100,15 @@ public abstract class VFS {
      */
     public abstract boolean isValid();
 
+    /**
+     * 获取路径地址
+     *
+     * @param path
+     * @return
+     * @throws IOException
+     */
     protected static List<URL> getResources(String path) throws IOException {
         Enumeration<URL> resources = Thread.currentThread().getContextClassLoader().getResources(path);
-        System.out.println(resources);
         return Collections.list(resources);
     }
 

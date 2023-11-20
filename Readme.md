@@ -1806,3 +1806,87 @@ log4j.appender.lastEventSavedAppender=org.apache.ibatis.session.AutoMappingUnkno
 ```
 
 这样就完成了日志系统的配置
+
+#### 20231118
+
+补充说明，之前在创建日志系统时，只要用到了日志的工厂类，通过工厂创建日志
+
+日志工厂：
+
+* 构造器私有化
+* 通过静态代码快初始化日志系统
+* 如果日志构造器为空，则构造日志系统
+
+```java
+public class LogFactory {
+
+    public static final String MARKER = "MYBATIS";
+
+    private static Constructor<? extends Log> logConstructor;
+
+    // 构造器私有化
+    private LogFactory() {
+        // disable construction
+    }
+
+    // 静态方法，引入日志系统
+    static {
+        tryImplementation(LogFactory::useSlf4jLogging);
+    }
+
+    // 初始化日志系统，执行useSlf4jLoggin该方法
+    private static void tryImplementation(Runnable runnable) {
+        if (logConstructor == null) {
+            try {
+                runnable.run();
+            } catch (Throwable t) {
+                // ignore
+            }
+        }
+    }
+
+    public static synchronized void useSlf4jLogging() {
+        setImplementation(Slf4jImpl.class);
+    }
+
+    /**
+     * 设置客户端配置的日志系统
+     *
+     * @param clazz
+     */
+    public static void useCustomLogging(Class<? extends Log> clazz) {
+        setImplementation(clazz);
+    }
+
+    /**
+     * 通过构造器构造日志系统并使用
+     *
+     * @param clazz
+     */
+    private static void setImplementation(Class<? extends Log> clazz) {
+        try {
+            // 通过反射获取构造器
+            Constructor<? extends Log> constructor = clazz.getConstructor(String.class);
+            Log log = constructor.newInstance(LogFactory.class.getName());
+            if (log.isDebugEnabled()) {
+                log.debug("日志系统初始化成功，使用 '" + clazz);
+            }
+            logConstructor = constructor;
+        } catch (Throwable e) {
+            throw new RuntimeException("设置日志系统出错.  原因: " + e, e);
+        }
+    }
+
+    public static Log getLog(Class<?> clazz) {
+        return getLog(clazz.getName());
+    }
+
+    public static Log getLog(String logger) {
+        try {
+            return logConstructor.newInstance(logger);
+        } catch (Throwable t) {
+            throw new RuntimeException("创建logger出错 " + logger + ".  原因: " + t, t);
+        }
+    }
+}
+```
